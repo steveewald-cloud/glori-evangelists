@@ -2,10 +2,15 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-RUN pip install uv
-
 COPY pyproject.toml .
-RUN uv pip install --system -r pyproject.toml
+
+RUN pip install --no-cache-dir \
+    "fastapi>=0.111.0" \
+    "uvicorn[standard]>=0.29.0" \
+    "psycopg[binary,pool]>=3.1.0" \
+    "jinja2>=3.1.0" \
+    "python-multipart>=0.0.9" \
+    "python-dateutil>=2.9.0"
 
 COPY . .
 
