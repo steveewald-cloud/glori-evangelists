@@ -1,20 +1,9 @@
-name: Deploy to Fly.io
+# This workflow is disabled - deploy.yml is the active workflow
+name: Deploy to Fly.io (disabled)
 
 on:
-  push:
-    branches:
-      - main
-
-jobs:
-  deploy:
-    name: Deploy app
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: superfly/flyctl-actions/setup-flyctl@master
-
-      - name: Deploy to Fly.io
-        run: flyctl deploy --remote-only
-        env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+  workflow_dispatch:
+    inputs:
+      disabled:
+        description: 'This workflow is disabled. Use deploy.yml instead.'
+        required: false
