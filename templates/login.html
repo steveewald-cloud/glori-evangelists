@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>GLORi Evangelists — Sign In</title>
+  <style>
+    :root { --navy: #1C2B35; --gold: #C9A84C; --cream: #F5F0E8; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh;
+      background: linear-gradient(135deg, #1C2B35 0%, #2a4055 60%, #1C2B35 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+    .login-card {
+      background: white;
+      border-radius: 16px;
+      padding: 44px 40px;
+      width: 100%;
+      max-width: 400px;
+      box-shadow: 0 24px 80px rgba(0,0,0,0.4);
+    }
+    .logo {
+      text-align: center;
+      margin-bottom: 8px;
+    }
+    .logo-text {
+      font-size: 36px;
+      font-weight: 900;
+      letter-spacing: 2px;
+    }
+    .logo-text .glor { color: var(--navy); }
+    .logo-text .i    { color: var(--gold); }
+    .logo-sub {
+      text-align: center;
+      font-size: 12px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--gold);
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+    .logo-mission {
+      text-align: center;
+      font-size: 12px;
+      color: #6B7A8D;
+      margin-bottom: 32px;
+    }
+    .form-group { margin-bottom: 18px; }
+    .form-group label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--navy);
+      margin-bottom: 6px;
+    }
+    .form-group input {
+      width: 100%;
+      padding: 11px 14px;
+      border: 1.5px solid #DDE4EA;
+      border-radius: 9px;
+      font-size: 15px;
+      color: var(--navy);
+      transition: border-color 0.2s;
+    }
+    .form-group input:focus {
+      outline: none;
+      border-color: var(--navy);
+    }
+    .btn-sign-in {
+      width: 100%;
+      padding: 13px;
+      background: var(--navy);
+      color: white;
+      border: none;
+      border-radius: 9px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.2s;
+      letter-spacing: 0.5px;
+    }
+    .btn-sign-in:hover { background: #2a3f50; }
+    .error {
+      background: #FFEBEE;
+      color: #C62828;
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      margin-bottom: 18px;
+      font-weight: 500;
+    }
+    .footer-note {
+      text-align: center;
+      font-size: 11px;
+      color: #9AA5B1;
+      margin-top: 24px;
+      letter-spacing: 0.5px;
+    }
+  </style>
+</head>
+<body>
+  <div class="login-card">
+    <div class="logo">
+      <div class="logo-text"><span class="glor">GLOR</span><span class="i">i</span></div>
+    </div>
+    <div class="logo-sub">Evangelists</div>
+    <div class="logo-mission">g to G &mdash; mans glory to Gods Glory</div>
+
+    {% if error %}
+    <div class="error">{{ error }}</div>
+    {% endif %}
+
+    <form method="post" action="/login">
+      <div class="form-group">
+        <label>Email Address</label>
+        <input type="email" name="email" placeholder="you@glori.com" required autofocus />
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" name="password" placeholder="••••••••" required />
+      </div>
+      <button type="submit" class="btn-sign-in">Sign In</button>
+    </form>
+
+    <div class="footer-note">GLORi Technologies &mdash; Confidential &mdash; Internal Use Only</div>
+  </div>
+</body>
+</html>
