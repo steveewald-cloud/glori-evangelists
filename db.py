@@ -159,12 +159,12 @@ async def get_all_prospects(conn):
     return await result.fetchall()
 
 
-# ─── Leadership / dashboard queries ───
+# ─── Leadership / dashboard queries ──────────────────────────────────────────
 
 async def get_rep_commission_history(conn, rep_id: int):
     result = await conn.execute(
         """SELECT ledger_month, subscription_month, commission_type, mrr,
-                  commission_amount, ambassador_deduction, net_commission, paid
+           commission_amount, ambassador_deduction, net_commission, paid
            FROM commission_ledger WHERE rep_id = %s
            ORDER BY ledger_month DESC LIMIT 24""",
         (rep_id,),
@@ -196,22 +196,35 @@ async def get_latest_giving_summary(conn):
 
 
 async def get_rep_attainment_summary(conn):
+    # total_mrr_managed and mrr_target are required by
+    # reps_management.html and leadership_dashboard.html templates.
+    # They were previously missing here, which caused a Jinja2
+    # UndefinedError (surfaced as 500 Internal Server Error) as soon
+    # as the first rep row existed and the templates tried to
+    # number-format / divide by those undefined fields.
     result = await conn.execute(
         """SELECT r.id, r.name, r.email, r.status, r.is_ramp,
-                  r.territory_state, r.territory_region, r.territory_vertical,
-                  COALESCE((SELECT SUM(cl.net_commission) FROM commission_ledger cl
-                            WHERE cl.rep_id = r.id
-                              AND cl.ledger_month = DATE_TRUNC('month', CURRENT_DATE)), 0)
-                      AS earned_this_month,
-                  COALESCE((SELECT COUNT(*) FROM clients c
-                            WHERE c.rep_id = r.id AND c.status = 'active'), 0) AS active_clients
+           r.territory_state, r.territory_region, r.territory_vertical,
+           COALESCE((SELECT SUM(cl.net_commission) FROM commission_ledger cl
+             WHERE cl.rep_id = r.id
+             AND cl.ledger_month = DATE_TRUNC('month', CURRENT_DATE)), 0)
+             AS earned_this_month,
+           COALESCE((SELECT COUNT(*) FROM clients c
+             WHERE c.rep_id = r.id AND c.status = 'active'), 0) AS active_clients,
+           COALESCE((SELECT SUM(c.mrr) FROM clients c
+             WHERE c.rep_id = r.id AND c.status = 'active'), 0) AS total_mrr_managed,
+           COALESCE((SELECT NULLIF(rq.mrr_target, 0) FROM rep_quotas rq
+             WHERE rq.rep_id = r.id
+             AND rq.quota_month = DATE_TRUNC('month', CURRENT_DATE)), 5000)
+             AS mrr_target
            FROM reps r WHERE r.status = 'active'
            ORDER BY earned_this_month DESC, r.name"""
     )
     rows = await result.fetchall()
     for row in rows:
         earned = float(row["earned_this_month"] or 0)
-        row["attainment_pct"] = round(min(earned / 5000 * 100, 100), 1)
+        target = float(row["mrr_target"] or 5000)
+        row["attainment_pct"] = round(min(earned / target * 100, 100), 1) if target > 0 else 0
     return rows
 
 
