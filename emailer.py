@@ -1,8 +1,7 @@
 """
-Email sending for GLORi Evangelists Platform.
-Uses the Resend API (https://resend.com). Gracefully no-ops with a log
-warning if RESEND_API_KEY is not set, so the app never crashes because
-email is unavailable -- it just logs and moves on.
+Branded transactional email for GLORi Evangelists.
+Uses Resend (https://resend.com). If RESEND_API_KEY is not set, sends are
+skipped with a warning so the app never crashes in dev/preview environments.
 """
 import os
 import logging
@@ -16,13 +15,13 @@ APP_BASE_URL = os.environ.get("APP_BASE_URL", "https://glori-evangelists.fly.dev
 
 NAVY = "#1C2B35"
 GOLD = "#C9A84C"
-CREAM = "#F5F1E6"
+CREAM = "#F5F0E8"
 
 
 def _send(to_email: str, subject: str, html: str) -> bool:
     if not RESEND_API_KEY:
         logger.warning(
-            "RESEND_API_KEY not set - skipping email to %s (subject: %s)",
+            "RESEND_API_KEY not set — skipping email to %s (subject: %s)",
             to_email, subject,
         )
         return False
@@ -42,8 +41,7 @@ def _send(to_email: str, subject: str, html: str) -> bool:
 
 def _wrap(title: str, body_html: str) -> str:
     return f"""
-    <div style="font-family: Georgia, 'Times New Roman', serif; max-width: 560px;
-                margin: 0 auto; background:#ffffff; border:1px solid #e5e5e5;">
+    <div style="font-family: Georgia, 'Times New Roman', serif; max-width: 560px; margin: 0 auto; background:#ffffff;">
       <div style="background:{NAVY}; padding: 28px 32px;">
         <span style="color:{CREAM}; font-size:22px; font-weight:bold; letter-spacing:1px;">
           GLOR<span style="color:{GOLD};">i</span> Evangelists
@@ -52,42 +50,37 @@ def _wrap(title: str, body_html: str) -> str:
       <div style="padding: 32px; color:{NAVY}; font-size:15px; line-height:1.6;">
         <h2 style="color:{NAVY}; margin-top:0;">{title}</h2>
         {body_html}
-        <p style="margin-top:32px; font-size:13px; color:#6b7280;">g to G &mdash; man's glory to God's glory</p>
+        <p style="margin-top:32px; font-size:13px; color:#6b7280;">g to G &mdash; man's glori to God's Glori</p>
       </div>
     </div>
-    """
-
-
-def _button(label: str, link: str) -> str:
-    return f"""
-    <p style="text-align:center; margin:32px 0;">
-      <a href="{link}" style="background:{GOLD}; color:{NAVY}; text-decoration:none;
-         font-weight:bold; padding:14px 28px; border-radius:6px; display:inline-block;">
-        {label}
-      </a>
-    </p>
     """
 
 
 def send_invite_email(to_email: str, name: str, token: str) -> bool:
     link = f"{APP_BASE_URL}/accept-invite?token={token}"
     body = f"""
-      <p>Hi {name},</p>
-      <p>Welcome to the GLORi Evangelists team! An account has been created for you so you can
-      track your territory, clients, commissions, and Kingdom impact in real time.</p>
-      {_button("Accept Invite &amp; Set Password", link)}
-      <p>This link expires in 7 days. If you did not expect this invite, just ignore this email.</p>
+    <p>Hi {name},</p>
+    <p>Welcome to the GLORi Evangelists team! An account has been created for you so you can track
+    your territory, clients, commissions, and Kingdom impact in real time.</p>
+    <p style="text-align:center; margin:32px 0;">
+      <a href="{link}" style="background:{GOLD}; color:{NAVY}; text-decoration:none; font-weight:bold;
+        padding:14px 28px; border-radius:6px; display:inline-block;">Accept Invite &amp; Set Password</a>
+    </p>
+    <p>This link expires in 7 days. If you did not expect this invite, just ignore this email.</p>
     """
-    return _send(to_email, "You're invited - GLORi Evangelists", _wrap("Welcome to GLORi Evangelists", body))
+    return _send(to_email, "You're invited — GLORi Evangelists", _wrap("Welcome to GLORi Evangelists", body))
 
 
 def send_dispute_filed_email(admin_email: str, rep_name: str, dispute_type: str,
                               description: str, dispute_id: int) -> bool:
     link = f"{APP_BASE_URL}/leadership/disputes"
     body = f"""
-      <p>{rep_name} just filed a commission dispute (#{dispute_id}, type: {dispute_type}).</p>
-      <p style="background:#f4f4f4; padding:16px; border-radius:6px;">{description}</p>
-      {_button("Review Dispute", link)}
+    <p>{rep_name} just filed a commission dispute (#{dispute_id}, type: {dispute_type.replace('_', ' ')}).</p>
+    <p style="background:#f4f4f4; padding:16px; border-radius:6px;">{description}</p>
+    <p style="text-align:center; margin:32px 0;">
+      <a href="{link}" style="background:{GOLD}; color:{NAVY}; text-decoration:none; font-weight:bold;
+        padding:14px 28px; border-radius:6px; display:inline-block;">Review Dispute</a>
+    </p>
     """
     return _send(admin_email, f"New commission dispute from {rep_name}", _wrap("Commission Dispute Filed", body))
 
@@ -100,9 +93,12 @@ def send_dispute_resolved_email(to_email: str, rep_name: str, status: str, resol
         if resolution_notes else ""
     )
     body = f"""
-      <p>Hi {rep_name},</p>
-      <p>Your commission dispute has been reviewed. Status: <strong>{pretty_status}</strong></p>
-      {notes_html}
-      {_button("View My Dashboard", link)}
+    <p>Hi {rep_name},</p>
+    <p>Your commission dispute has been reviewed. Status: <strong>{pretty_status}</strong></p>
+    {notes_html}
+    <p style="text-align:center; margin:32px 0;">
+      <a href="{link}" style="background:{GOLD}; color:{NAVY}; text-decoration:none; font-weight:bold;
+        padding:14px 28px; border-radius:6px; display:inline-block;">View My Disputes</a>
+    </p>
     """
     return _send(to_email, "Update on your commission dispute", _wrap("Dispute Update", body))
