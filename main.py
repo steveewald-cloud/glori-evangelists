@@ -85,7 +85,7 @@ async def require_leadership(request: Request):
 
 @app.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request):
-    return templates.TemplateResponse("login.html", {"request": request, "error": None})
+    return templates.TemplateResponse(request, "login.html", {"request": request, "error": None})
 
 
 @app.post("/login")
@@ -93,7 +93,7 @@ async def login_post(request: Request, email: str = Form(...), password: str = F
     async with db.get_conn() as conn:
         user = await db.get_user_by_email(conn, email)
         if not user or user["password_hash"] != hash_password(password):
-            return templates.TemplateResponse("login.html", {
+            return templates.TemplateResponse(request, "login.html", {
                 "request": request,
                 "error": "Invalid email or password"
             })
@@ -156,7 +156,7 @@ async def rep_dashboard(request: Request, user=Depends(require_user)):
         attainment = min(earned / 5000 * 100, 100)
         draw = float(DRAW_AMOUNT) if rep and rep.get("is_ramp") and earned < 5000 else 0
 
-    return templates.TemplateResponse("rep_dashboard.html", {
+    return templates.TemplateResponse(request, "rep_dashboard.html", {
         "request": request,
         "user": user,
         "rep": rep,
@@ -177,7 +177,7 @@ async def rep_pipeline(request: Request, user=Depends(require_user)):
     async with db.get_conn() as conn:
         rep = await db.get_rep_by_id(conn, user["rep_id"]) if user["rep_id"] else None
         prospects = await db.get_rep_prospects(conn, rep["id"]) if rep else []
-    return templates.TemplateResponse("pipeline.html", {
+    return templates.TemplateResponse(request, "pipeline.html", {
         "request": request,
         "user": user,
         "rep": rep,
@@ -260,7 +260,7 @@ async def leadership_dashboard(request: Request, user=Depends(require_leadership
         current_reserve=Decimal("0"),
     )
 
-    return templates.TemplateResponse("leadership_dashboard.html", {
+    return templates.TemplateResponse(request, "leadership_dashboard.html", {
         "request": request,
         "user": user,
         "total_mrr": total_mrr,
@@ -281,7 +281,7 @@ async def leadership_reps(request: Request, user=Depends(require_leadership)):
     async with db.get_conn() as conn:
         reps = await db.get_all_reps(conn)
         attainment = await db.get_rep_attainment_summary(conn)
-    return templates.TemplateResponse("reps_management.html", {
+    return templates.TemplateResponse(request, "reps_management.html", {
         "request": request,
         "user": user,
         "reps": reps,

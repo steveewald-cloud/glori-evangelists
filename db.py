@@ -57,28 +57,28 @@ async def get_user_by_email(conn, email: str):
     return await result.fetchone()
 
 
-async def create_session(conn, session_id: str, user_id: int, expires):
+async def create_session(conn, id: str, user_id: int, expires):
     await conn.execute(
-        """INSERT INTO sessions (session_id, user_id, expires_at)
+        """INSERT INTO sessions (id, user_id, expires_at)
            VALUES (%s, %s, %s)
-           ON CONFLICT (session_id) DO NOTHING""",
-        (session_id, user_id, expires)
+           ON CONFLICT (id) DO NOTHING""",
+        (id, user_id, expires)
     )
 
 
-async def get_session(conn, session_id: str):
+async def get_session(conn, id: str):
     result = await conn.execute(
         """SELECT u.* FROM sessions s
            JOIN users u ON u.id = s.user_id
-           WHERE s.session_id = %s AND s.expires_at > NOW()""",
-        (session_id,)
+           WHERE s.id = %s AND s.expires_at > NOW()""",
+        (id,)
     )
     return await result.fetchone()
 
 
-async def delete_session(conn, session_id: str):
+async def delete_session(conn, id: str):
     await conn.execute(
-        "DELETE FROM sessions WHERE session_id = %s", (session_id,)
+        "DELETE FROM sessions WHERE id = %s", (id,)
     )
 
 
@@ -155,5 +155,70 @@ async def get_all_prospects(conn):
            LEFT JOIN reps r ON r.id = p.rep_id
            WHERE p.stage NOT IN ('lost')
            ORDER BY p.created_at DESC"""
+    )
+    return await result.fetchall()
+
+
+# ─── Leadership / dashboard queries ───
+
+async def get_rep_commission_history(conn, rep_id: int):
+    result = await conn.execute(
+        """SELECT ledger_month, subscription_month, commission_type, mrr,
+                  commission_amount, ambassador_deduction, net_commission, paid
+           FROM commission_ledger WHERE rep_id = %s
+           ORDER BY ledger_month DESC LIMIT 24""",
+        (rep_id,),
+    )
+    return await result.fetchall()
+
+
+async def get_total_mrr(conn):
+    result = await conn.execute(
+        """SELECT COALESCE(SUM(mrr), 0) AS total_mrr, COUNT(*) AS client_count
+           FROM clients WHERE status = 'active'"""
+    )
+    return await result.fetchone()
+
+
+async def get_mrr_by_plan(conn):
+    result = await conn.execute(
+        """SELECT plan, COALESCE(SUM(mrr), 0) AS mrr, COUNT(*) AS client_count
+           FROM clients WHERE status = 'active' GROUP BY plan ORDER BY plan"""
+    )
+    return await result.fetchall()
+
+
+async def get_latest_giving_summary(conn):
+    result = await conn.execute(
+        "SELECT * FROM giving_ledger ORDER BY ledger_month DESC LIMIT 1"
+    )
+    return await result.fetchone()
+
+
+async def get_rep_attainment_summary(conn):
+    result = await conn.execute(
+        """SELECT r.id, r.name, r.email, r.status, r.is_ramp,
+                  r.territory_state, r.territory_region, r.territory_vertical,
+                  COALESCE((SELECT SUM(cl.net_commission) FROM commission_ledger cl
+                            WHERE cl.rep_id = r.id
+                              AND cl.ledger_month = DATE_TRUNC('month', CURRENT_DATE)), 0)
+                      AS earned_this_month,
+                  COALESCE((SELECT COUNT(*) FROM clients c
+                            WHERE c.rep_id = r.id AND c.status = 'active'), 0) AS active_clients
+           FROM reps r WHERE r.status = 'active'
+           ORDER BY earned_this_month DESC, r.name"""
+    )
+    rows = await result.fetchall()
+    for row in rows:
+        earned = float(row["earned_this_month"] or 0)
+        row["attainment_pct"] = round(min(earned / 5000 * 100, 100), 1)
+    return rows
+
+
+async def get_all_clients_with_reps(conn):
+    result = await conn.execute(
+        """SELECT c.*, r.name AS rep_name FROM clients c
+           LEFT JOIN reps r ON r.id = c.rep_id
+           WHERE c.status = 'active' ORDER BY c.subscription_start DESC"""
     )
     return await result.fetchall()
