@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+{% block title %}Pipeline — GLORi Evangelists{% endblock %}
+
+{% block content %}
+<div class="page">
+
+  <div class="page-header">
+    <h1>My Pipeline</h1>
+    <p>{{ prospects|length }} active prospects &mdash; track every opportunity from audit to live</p>
+  </div>
+
+  <div style="display:flex;justify-content:flex-end;margin-bottom:20px;">
+    <button onclick="document.getElementById('add-prospect-modal').classList.add('open')" class="btn btn-gold">+ Log Prospect</button>
+  </div>
+
+  <!-- Kanban-style pipeline columns -->
+  <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;overflow-x:auto;">
+    {% set stage_list = [
+      ("audit", "Audit", "badge-audit"),
+      ("demo", "Demo Built", "badge-demo"),
+      ("committed", "Committed", "badge-committed"),
+      ("migrated", "Migrated", "badge-migrated"),
+      ("live", "Live", "badge-live"),
+    ] %}
+
+    {% for stage_key, stage_label, badge_class in stage_list %}
+    <div>
+      <div style="background:var(--navy);color:var(--cream);border-radius:8px 8px 0 0;padding:10px 14px;font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;">
+        {{ stage_label }}
+        <span style="float:right;background:var(--gold);color:var(--navy);border-radius:999px;padding:1px 8px;font-size:11px;">
+          {{ prospects | selectattr('stage', 'equalto', stage_key) | list | length }}
+        </span>
+      </div>
+      <div style="background:var(--light-gray);border-radius:0 0 8px 8px;padding:10px;min-height:200px;display:flex;flex-direction:column;gap:8px;">
+        {% for p in prospects %}
+        {% if p.stage == stage_key %}
+        <div class="card" style="padding:14px;">
+          <div style="font-size:14px;font-weight:700;margin-bottom:4px;">{{ p.business_name }}</div>
+          {% if p.contact_name %}<div style="font-size:12px;color:var(--text-muted);">{{ p.contact_name }}</div>{% endif %}
+          <div style="margin:8px 0;">
+            <span class="badge badge-{{ p.target_plan }}" style="font-size:11px;">{{ p.target_plan|title }}</span>
+            {% if p.vertical %}<span style="font-size:11px;color:var(--text-muted);margin-left:6px;">{{ p.vertical }}</span>{% endif %}
+          </div>
+          {% if p.city or p.state %}
+          <div style="font-size:12px;color:var(--text-muted);">{{ p.city }}{% if p.city and p.state %}, {% endif %}{{ p.state }}</div>
+          {% endif %}
+          {% if p.website_url %}
+          <a href="{{ p.website_url }}" target="_blank" style="font-size:12px;color:var(--navy);display:block;margin-top:4px;">View Site &rarr;</a>
+          {% endif %}
+
+          <!-- Stage advance buttons -->
+          <div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap;">
+            {% if stage_key != 'live' and stage_key != 'lost' %}
+            {% set stage_order = ["audit", "demo", "committed", "migrated", "live"] %}
+            {% set next_stage = stage_order[(stage_order.index(stage_key) + 1)] if stage_key in stage_order and stage_order.index(stage_key) < stage_order|length - 1 else None %}
+            {% if next_stage %}
+            <form method="post" action="/rep/prospect/{{ p.id }}/stage">
+              <input type="hidden" name="stage" value="{{ next_stage }}" />
+              <button type="submit" class="btn btn-primary btn-sm">Advance &rarr;</button>
+            </form>
+            {% endif %}
+            <form method="post" action="/rep/prospect/{{ p.id }}/stage">
+              <input type="hidden" name="stage" value="lost" />
+              <button type="submit" class="btn btn-sm" style="background:#FFEBEE;color:#C62828;border:none;">Lost</button>
+            </form>
+            {% endif %}
+          </div>
+
+          {% if p.notes %}
+          <div style="margin-top:8px;font-size:12px;color:var(--text-muted);border-top:1px solid var(--border);padding-top:8px;">{{ p.notes[:80] }}{% if p.notes|length > 80 %}...{% endif %}</div>
+          {% endif %}
+        </div>
+        {% endif %}
+        {% endfor %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Lost prospects collapsible -->
+  {% set lost_count = prospects | selectattr('stage', 'equalto', 'lost') | list | length %}
+  {% if lost_count > 0 %}
+  <div class="section-gap">
+    <details>
+      <summary style="cursor:pointer;font-size:14px;font-weight:600;color:var(--text-muted);">
+        Lost Prospects ({{ lost_count }})
+      </summary>
+      <div class="card" style="margin-top:10px;">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Business</th><th>Plan</th><th>City</th><th>Notes</th></tr>
+            </thead>
+            <tbody>
+              {% for p in prospects %}
+              {% if p.stage == 'lost' %}
+              <tr>
+                <td>{{ p.business_name }}</td>
+                <td><span class="badge badge-{{ p.target_plan }}">{{ p.target_plan|title }}</span></td>
+                <td style="font-size:13px;">{{ p.city }}, {{ p.state }}</td>
+                <td style="font-size:13px;color:var(--text-muted);">{{ p.notes or "—" }}</td>
+              </tr>
+              {% endif %}
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </details>
+  </div>
+  {% endif %}
+
+</div>
+
+<!-- Add Prospect Modal -->
+<div class="modal-overlay" id="add-prospect-modal">
+  <div class="modal">
+    <div class="modal-title">
+      Log New Prospect
+      <span class="modal-close" onclick="document.getElementById('add-prospect-modal').classList.remove('open')">&times;</span>
+    </div>
+    <form method="post" action="/rep/prospect/add">
+      <div class="form-group">
+        <label>Business Name *</label>
+        <input type="text" name="business_name" required placeholder="Acme Restoration Co." />
+      </div>
+      <div class="form-group">
+        <label>Contact Name</label>
+        <input type="text" name="contact_name" placeholder="John Smith" />
+      </div>
+      <div class="form-group">
+        <label>Contact Email</label>
+        <input type="email" name="contact_email" placeholder="john@example.com" />
+      </div>
+      <div class="form-group">
+        <label>Contact Phone</label>
+        <input type="tel" name="contact_phone" placeholder="(918) 555-0100" />
+      </div>
+      <div class="form-group">
+        <label>Website URL</label>
+        <input type="url" name="website_url" placeholder="https://example.com" />
+      </div>
+      <div class="form-group">
+        <label>City</label>
+        <input type="text" name="city" placeholder="Tulsa" />
+      </div>
+      <div class="form-group">
+        <label>State</label>
+        <input type="text" name="state" placeholder="OK" maxlength="2" />
+      </div>
+      <div class="form-group">
+        <label>Target Plan</label>
+        <select name="target_plan">
+          <option value="foundation">Foundation — $100/mo</option>
+          <option value="builder" selected>Builder — $400/mo</option>
+          <option value="performance">Performance — $1,000/mo</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Vertical</label>
+        <select name="vertical">
+          <option value="general">General Business</option>
+          <option value="churches">Churches / Ministry</option>
+          <option value="restoration">Restoration / Trades</option>
+          <option value="coaching">Coaching / Consulting</option>
+          <option value="healthcare">Healthcare</option>
+          <option value="real_estate">Real Estate</option>
+          <option value="retail">Retail</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Notes</label>
+        <textarea name="notes" rows="2" placeholder="Any relevant context..."></textarea>
+      </div>
+      <button type="submit" class="btn btn-primary" style="width:100%;">Log Prospect</button>
+    </form>
+  </div>
+</div>
+{% endblock %}
