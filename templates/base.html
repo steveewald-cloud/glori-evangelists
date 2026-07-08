@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}GLORi Evangelists{% endblock %}</title>
+  <style>
+    :root {
+      --navy: #1C2B35;
+      --gold: #C9A84C;
+      --cream: #F5F0E8;
+      --white: #FFFFFF;
+      --light-gray: #F0F4F7;
+      --border: #DDE4EA;
+      --success: #2E7D52;
+      --warning: #B8860B;
+      --danger: #C0392B;
+      --text: #1C2B35;
+      --text-muted: #6B7A8D;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--light-gray);
+      color: var(--text);
+      font-size: 15px;
+      line-height: 1.6;
+    }
+
+    /* ── Nav ── */
+    nav {
+      background: var(--navy);
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 60px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+    }
+
+    .nav-logo {
+      font-size: 22px;
+      font-weight: 900;
+      letter-spacing: 1px;
+    }
+    .nav-logo .glor { color: var(--cream); }
+    .nav-logo .i    { color: var(--gold); }
+
+    .nav-sub {
+      color: var(--gold);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+
+    .nav-links { display: flex; gap: 4px; align-items: center; }
+
+    .nav-links a {
+      color: rgba(255,255,255,0.75);
+      text-decoration: none;
+      padding: 8px 14px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+    .nav-links a:hover, .nav-links a.active {
+      background: rgba(201,168,76,0.2);
+      color: var(--gold);
+    }
+
+    .nav-user {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .nav-user span {
+      color: rgba(255,255,255,0.6);
+      font-size: 13px;
+    }
+
+    .btn-logout {
+      background: rgba(255,255,255,0.1);
+      color: rgba(255,255,255,0.7);
+      border: 1px solid rgba(255,255,255,0.15);
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-size: 13px;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+    .btn-logout:hover { background: rgba(255,255,255,0.2); color: white; }
+
+    /* ── Layout ── */
+    .page { max-width: 1280px; margin: 0 auto; padding: 28px 24px; }
+
+    .page-header {
+      margin-bottom: 28px;
+    }
+    .page-header h1 {
+      font-size: 26px;
+      font-weight: 700;
+      color: var(--navy);
+    }
+    .page-header p {
+      color: var(--text-muted);
+      font-size: 14px;
+      margin-top: 4px;
+    }
+
+    /* ── Cards ── */
+    .card {
+      background: var(--white);
+      border-radius: 12px;
+      padding: 24px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+      border: 1px solid var(--border);
+    }
+
+    .card-title {
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+
+    .card-value {
+      font-size: 32px;
+      font-weight: 800;
+      color: var(--navy);
+      line-height: 1.1;
+    }
+
+    .card-sub {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    /* ── Grid ── */
+    .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+
+    @media (max-width: 900px) {
+      .grid-4 { grid-template-columns: repeat(2, 1fr); }
+      .grid-3 { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 600px) {
+      .grid-4, .grid-3, .grid-2 { grid-template-columns: 1fr; }
+      .page { padding: 16px; }
+    }
+
+    /* ── Progress Bar ── */
+    .progress-wrap {
+      background: var(--light-gray);
+      border-radius: 999px;
+      height: 12px;
+      overflow: hidden;
+      margin: 8px 0;
+    }
+    .progress-fill {
+      height: 100%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, var(--navy), var(--gold));
+      transition: width 0.5s ease;
+    }
+    .progress-fill.kingdom { background: linear-gradient(90deg, #2E7D52, #4CAF50); }
+
+    /* ── Tables ── */
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th {
+      background: var(--navy);
+      color: var(--cream);
+      padding: 10px 14px;
+      text-align: left;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+    td { padding: 10px 14px; border-bottom: 1px solid var(--border); }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: var(--light-gray); }
+
+    /* ── Badges ── */
+    .badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .badge-foundation { background: #E8F5E9; color: #2E7D52; }
+    .badge-builder { background: #E3F2FD; color: #1565C0; }
+    .badge-performance { background: #F3E5F5; color: #6A1B9A; }
+    .badge-ramp { background: #FFF3E0; color: #E65100; }
+    .badge-steady { background: #E8F5E9; color: #1B5E20; }
+    .badge-audit { background: #F5F5F5; color: #424242; }
+    .badge-demo { background: #E3F2FD; color: #0D47A1; }
+    .badge-committed { background: #FFF8E1; color: #F57F17; }
+    .badge-migrated { background: #F3E5F5; color: #4A148C; }
+    .badge-live { background: #E8F5E9; color: #1B5E20; }
+    .badge-lost { background: #FFEBEE; color: #B71C1C; }
+
+    /* ── Buttons ── */
+    .btn {
+      display: inline-block;
+      padding: 9px 20px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      border: none;
+      transition: all 0.2s;
+    }
+    .btn-primary { background: var(--navy); color: white; }
+    .btn-primary:hover { background: #2a3f50; }
+    .btn-gold { background: var(--gold); color: var(--navy); }
+    .btn-gold:hover { background: #b8973a; }
+    .btn-sm { padding: 5px 12px; font-size: 12px; }
+    .btn-outline {
+      background: transparent;
+      border: 1.5px solid var(--navy);
+      color: var(--navy);
+    }
+    .btn-outline:hover { background: var(--navy); color: white; }
+
+    /* ── Kingdom Impact Banner ── */
+    .kingdom-banner {
+      background: linear-gradient(135deg, var(--navy) 0%, #2a3f50 100%);
+      border-radius: 12px;
+      padding: 24px;
+      color: white;
+      margin-bottom: 24px;
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 24px;
+      align-items: center;
+    }
+
+    .kingdom-banner .k-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 4px;
+    }
+
+    .kingdom-banner .k-value {
+      font-size: 28px;
+      font-weight: 800;
+      color: white;
+    }
+
+    .kingdom-banner .k-sub {
+      font-size: 12px;
+      color: rgba(255,255,255,0.6);
+      margin-top: 2px;
+    }
+
+    @media (max-width: 700px) {
+      .kingdom-banner { grid-template-columns: 1fr; }
+    }
+
+    /* ── Forms ── */
+    .form-group { margin-bottom: 16px; }
+    .form-group label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+    .form-group input, .form-group select, .form-group textarea {
+      width: 100%;
+      padding: 9px 12px;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      font-size: 14px;
+      color: var(--text);
+      background: white;
+      transition: border-color 0.2s;
+    }
+    .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+      outline: none;
+      border-color: var(--navy);
+    }
+
+    /* ── Attainment indicator ── */
+    .attainment-box {
+      background: linear-gradient(135deg, #1C2B35, #2a4055);
+      color: white;
+      border-radius: 12px;
+      padding: 20px 24px;
+      margin-bottom: 20px;
+    }
+
+    .attainment-box .att-label { font-size: 11px; letter-spacing: 2px; color: var(--gold); text-transform: uppercase; font-weight: 700; }
+    .attainment-box .att-amount { font-size: 38px; font-weight: 900; margin: 4px 0; }
+    .attainment-box .att-sub { font-size: 13px; color: rgba(255,255,255,0.6); }
+
+    .section-gap { margin-top: 28px; }
+    .section-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--navy);
+      margin-bottom: 14px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid var(--border);
+    }
+
+    .g-to-G {
+      font-size: 11px;
+      color: var(--gold);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      font-weight: 700;
+    }
+
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: white;
+      border-radius: 14px;
+      padding: 28px;
+      width: 100%;
+      max-width: 480px;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+    .modal-title { font-size: 18px; font-weight: 700; margin-bottom: 20px; color: var(--navy); }
+    .modal-close { float: right; cursor: pointer; color: var(--text-muted); font-size: 20px; line-height: 1; }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="/" class="nav-brand">
+    <div>
+      <div class="nav-logo"><span class="glor">GLOR</span><span class="i">i</span></div>
+      <div class="nav-sub">Evangelists</div>
+    </div>
+  </a>
+
+  {% if user %}
+  <div class="nav-links">
+    {% if user.role in ['admin', 'leadership'] %}
+      <a href="/leadership" {% if request.url.path == '/leadership' %}class="active"{% endif %}>Overview</a>
+      <a href="/leadership/reps" {% if request.url.path == '/leadership/reps' %}class="active"{% endif %}>Reps</a>
+    {% else %}
+      <a href="/rep" {% if request.url.path == '/rep' %}class="active"{% endif %}>My Dashboard</a>
+      <a href="/rep/pipeline" {% if request.url.path == '/rep/pipeline' %}class="active"{% endif %}>Pipeline</a>
+    {% endif %}
+  </div>
+
+  <div class="nav-user">
+    <span>{{ user.name }}</span>
+    <a href="/logout" class="btn-logout">Sign Out</a>
+  </div>
+  {% endif %}
+</nav>
+
+{% block content %}{% endblock %}
+
+{% block scripts %}{% endblock %}
+</body>
+</html>
