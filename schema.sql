@@ -111,12 +111,6 @@ CREATE TABLE IF NOT EXISTS giving_ledger (
     founders_pool NUMERIC(12,2) NOT NULL DEFAULT 0,
     rep_commissions NUMERIC(12,2) NOT NULL DEFAULT 0,
     operating_costs NUMERIC(12,2) NOT NULL DEFAULT 0,
-    net_remainder NUMERIC(12,2) NOT NULL DEFAULT 0,
-    reserve_amount NUMERIC(12,2) NOT NULL DEFAULT 0,
-    giving_layer2 NUMERIC(12,2) NOT NULL DEFAULT 0,
-    total_kingdom_giving NUMERIC(12,2) NOT NULL DEFAULT 0,
-    reserve_target_met BOOLEAN NOT NULL DEFAULT false,
-    kingdom_pct_of_mrr NUMERIC(6,2) NOT NULL DEFAULT 0,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -129,7 +123,8 @@ CREATE TABLE IF NOT EXISTS rep_quotas (
     UNIQUE(rep_id, quota_month)
 );
 
--- Rep-filed disputes over missing/incorrect commissions
+-- Commission disputes: reps can flag a missing/incorrect commission line,
+-- or a client that never got credited to them. Leadership reviews and resolves.
 CREATE TABLE IF NOT EXISTS commission_disputes (
     id SERIAL PRIMARY KEY,
     rep_id INTEGER REFERENCES reps(id) NOT NULL,
