@@ -1,0 +1,271 @@
+{% extends "base.html" %}
+{% block title %}GLORi Leadership — Business Intelligence{% endblock %}
+
+{% block content %}
+<div class="page">
+
+  <div class="page-header">
+    <h1>Business Intelligence</h1>
+    <p class="g-to-G">g to G &mdash; {{ current_month }}</p>
+  </div>
+
+  <!-- Kingdom Impact Banner -->
+  <div class="kingdom-banner">
+    <div>
+      <div class="k-label">Kingdom Giving — Layer 1</div>
+      <div class="k-value">${{ "{:,.0f}".format(giving_live.giving_layer1) }}</div>
+      <div class="k-sub">10% of gross MRR &mdash; covenant, off the top</div>
+    </div>
+    <div>
+      <div class="k-label">Kingdom Giving — Layer 2</div>
+      <div class="k-value">${{ "{:,.0f}".format(giving_live.giving_layer2) }}</div>
+      <div class="k-sub">100% of net surplus this month</div>
+    </div>
+    <div>
+      <div class="k-label">Total Kingdom Impact</div>
+      <div class="k-value">${{ "{:,.0f}".format(giving_live.total_kingdom_giving) }}</div>
+      <div class="k-sub">{{ "{:.0f}".format(giving_live.kingdom_pct_of_mrr) }}% of gross MRR flowing to Kingdom</div>
+    </div>
+  </div>
+
+  <!-- MRR / ARR / Clients -->
+  <div class="grid-4">
+    <div class="card">
+      <div class="card-title">Monthly Recurring Revenue</div>
+      <div class="card-value">${{ "{:,.0f}".format(total_mrr) }}</div>
+      <div class="card-sub">{{ client_count }} active clients</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Annual Recurring Revenue</div>
+      <div class="card-value">${{ "{:,.0f}".format(arr) }}</div>
+      <div class="card-sub">ARR &mdash; annualized current MRR</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Founders Pool (Monthly)</div>
+      <div class="card-value">${{ "{:,.0f}".format(giving_live.founders_pool) }}</div>
+      <div class="card-sub">Per operating agreement — marginal ARR brackets</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Rep Commissions (MTD)</div>
+      <div class="card-value">${{ "{:,.0f}".format(giving_live.rep_commissions) }}</div>
+      <div class="card-sub">All active rep earnings this month</div>
+    </div>
+  </div>
+
+  <!-- MRR by Plan -->
+  <div class="section-gap">
+    <div class="section-title">Revenue by Plan Tier</div>
+    <div class="grid-3">
+      {% set plan_colors = {"foundation": "badge-foundation", "builder": "badge-builder", "performance": "badge-performance"} %}
+      {% set plan_names = {"foundation": "Foundation — $100/mo", "builder": "Builder — $400/mo", "performance": "Performance — $1,000/mo"} %}
+      {% for row in mrr_by_plan %}
+      <div class="card">
+        <div class="card-title">{{ plan_names.get(row.plan, row.plan) }}</div>
+        <div class="card-value">${{ "{:,.0f}".format(row.mrr) }}</div>
+        <div class="card-sub">{{ row.client_count }} clients</div>
+        <div style="margin-top:12px;">
+          <div class="progress-wrap">
+            <div class="progress-fill" style="width: {{ [row.mrr / [total_mrr, 1]|max * 100, 100]|min }}%"></div>
+          </div>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">
+            {{ "{:.0f}".format(row.mrr / [total_mrr, 1]|max * 100) }}% of total MRR
+          </div>
+        </div>
+      </div>
+      {% else %}
+      <div class="card" style="grid-column: 1/-1;">
+        <div style="color:var(--text-muted);text-align:center;padding:20px;">No active clients yet. <a href="#" onclick="document.getElementById('add-client-modal').classList.add('open')">Add the first client.</a></div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Money Flow -->
+  <div class="section-gap">
+    <div class="section-title">Money Flow This Month</div>
+    <div class="card">
+      {% set flows = [
+        ("Gross MRR", giving_live.gross_mrr, "#1C2B35"),
+        ("Kingdom Giving Layer 1 (10% off top)", giving_live.giving_layer1, "#2E7D52"),
+        ("Founders Pool", giving_live.founders_pool, "#5C6BC0"),
+        ("Rep Commissions", giving_live.rep_commissions, "#E65100"),
+        ("Operating Costs", giving_live.operating_costs, "#6D4C41"),
+        ("Net Remainder", giving_live.net_remainder, "#0277BD"),
+        ("Working Capital Reserve", giving_live.reserve_amount, "#827717"),
+        ("Kingdom Giving Layer 2 (100% of surplus)", giving_live.giving_layer2, "#2E7D52"),
+      ] %}
+      {% for label, amount, color in flows %}
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="width:10px;height:10px;border-radius:50%;background:{{ color }};flex-shrink:0;"></div>
+          <span style="font-size:14px;">{{ label }}</span>
+        </div>
+        <strong style="font-size:15px;color:{{ color }};">${{ "{:,.0f}".format(amount) }}</strong>
+      </div>
+      {% endfor %}
+      {% if giving_live.reserve_target_met %}
+      <div style="margin-top:12px;padding:10px 14px;background:#E8F5E9;border-radius:8px;font-size:13px;color:#1B5E20;font-weight:600;">
+        Reserve target ($10,000) reached — all surplus now flows directly to Kingdom Giving Layer 2.
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Rep Attainment -->
+  <div class="section-gap">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+      <div class="section-title" style="margin:0;border:none;">Rep Attainment — {{ current_month }}</div>
+      <a href="/leadership/reps" class="btn btn-outline btn-sm">Manage Reps</a>
+    </div>
+    <div class="card">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Rep</th>
+              <th>Territory</th>
+              <th>Status</th>
+              <th>Clients</th>
+              <th>MRR Managed</th>
+              <th>Earned MTD</th>
+              <th>Quota</th>
+              <th>Attainment</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in rep_attainment %}
+            {% set attainment_pct = [r.earned_this_month / r.mrr_target * 100, 100]|min %}
+            <tr>
+              <td><strong>{{ r.name }}</strong></td>
+              <td style="font-size:13px;color:var(--text-muted);">{{ r.territory_region or r.territory_state or "—" }}</td>
+              <td>
+                <span class="badge {{ 'badge-ramp' if r.is_ramp else 'badge-steady' }}">
+                  {{ "Ramp" if r.is_ramp else "Steady" }}
+                </span>
+              </td>
+              <td>{{ r.active_clients }}</td>
+              <td>${{ "{:,.0f}".format(r.total_mrr_managed) }}</td>
+              <td><strong>${{ "{:,.0f}".format(r.earned_this_month) }}</strong></td>
+              <td style="color:var(--text-muted);">${{ "{:,.0f}".format(r.mrr_target) }}</td>
+              <td style="min-width:140px;">
+                <div class="progress-wrap" style="height:8px;margin:0 0 4px 0;">
+                  <div class="progress-fill" style="width:{{ attainment_pct }}%;"></div>
+                </div>
+                <span style="font-size:12px;color:var(--text-muted);">{{ "{:.0f}".format(attainment_pct) }}%</span>
+              </td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="8" style="text-align:center;color:var(--text-muted);padding:24px;">
+                No reps yet. <a href="/leadership/reps">Add the first GLORi Evangelist.</a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Active Clients -->
+  <div class="section-gap">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+      <div class="section-title" style="margin:0;border:none;">Active Clients</div>
+      <button onclick="document.getElementById('add-client-modal').classList.add('open')" class="btn btn-gold btn-sm">+ Add Client</button>
+    </div>
+    <div class="card">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Business</th>
+              <th>Plan</th>
+              <th>MRR</th>
+              <th>Rep</th>
+              <th>Sub Month</th>
+              <th>Commission Tier</th>
+              <th>Start Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for c in all_clients %}
+            {% set sub_month = c.subscription_month|int %}
+            {% if sub_month == 1 %}
+              {% set tier = "Month 1" %}
+            {% elif sub_month <= 6 %}
+              {% set tier = "Months 2–6 (20%)" %}
+            {% elif sub_month <= 12 %}
+              {% set tier = "Months 7–12 (10%)" %}
+            {% else %}
+              {% set tier = "Residual (5%)" %}
+            {% endif %}
+            <tr>
+              <td><strong>{{ c.business_name }}</strong></td>
+              <td><span class="badge badge-{{ c.plan }}">{{ c.plan|title }}</span></td>
+              <td>${{ "{:,.0f}".format(c.mrr) }}</td>
+              <td style="font-size:13px;">{{ c.rep_name }}</td>
+              <td style="text-align:center;font-size:13px;">M{{ sub_month }}</td>
+              <td style="font-size:12px;color:var(--text-muted);">{{ tier }}</td>
+              <td style="font-size:13px;color:var(--text-muted);">{{ c.subscription_start }}</td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="7" style="text-align:center;color:var(--text-muted);padding:24px;">No active clients yet.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Add Client Modal -->
+<div class="modal-overlay" id="add-client-modal">
+  <div class="modal">
+    <div class="modal-title">
+      Add Client
+      <span class="modal-close" onclick="document.getElementById('add-client-modal').classList.remove('open')">&times;</span>
+    </div>
+    <form method="post" action="/leadership/clients/add">
+      <div class="form-group">
+        <label>Assigned Rep</label>
+        <select name="rep_id" required>
+          <option value="">Select rep...</option>
+          {% for r in rep_attainment %}
+          <option value="{{ r.id }}">{{ r.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Business Name</label>
+        <input type="text" name="business_name" required placeholder="Acme Restoration Co." />
+      </div>
+      <div class="form-group">
+        <label>Contact Email</label>
+        <input type="email" name="contact_email" placeholder="owner@example.com" />
+      </div>
+      <div class="form-group">
+        <label>Plan</label>
+        <select name="plan" required>
+          <option value="foundation">Foundation — $100/mo</option>
+          <option value="builder" selected>Builder — $400/mo</option>
+          <option value="performance">Performance — $1,000/mo</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Subscription Start Date</label>
+        <input type="date" name="subscription_start" required />
+      </div>
+      <div class="form-group">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+          <input type="checkbox" name="is_ambassador_deal" style="width:auto;" />
+          Ambassador deal (deducts $250 from rep Month 1)
+        </label>
+      </div>
+      <button type="submit" class="btn btn-primary" style="width:100%;">Add Client</button>
+    </form>
+  </div>
+</div>
+{% endblock %}
