@@ -1,0 +1,286 @@
+{% extends "base.html" %}
+{% block title %}My Dashboard — GLORi Evangelists{% endblock %}
+
+{% block content %}
+<div class="page">
+
+  <div class="page-header">
+    <h1>{{ user.name }}</h1>
+    <p class="g-to-G">GLORi Evangelist &mdash; {{ current_month }}</p>
+  </div>
+
+  {% if rep %}
+  <!-- Territory Badge -->
+  <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px;">
+    {% if rep.territory_region %}<span class="badge badge-builder">{{ rep.territory_region }}</span>{% endif %}
+    {% if rep.territory_state %}<span class="badge badge-builder">{{ rep.territory_state }}</span>{% endif %}
+    {% if rep.territory_vertical %}<span class="badge badge-foundation">{{ rep.territory_vertical|title }}</span>{% endif %}
+    <span class="badge {{ 'badge-ramp' if rep.is_ramp else 'badge-steady' }}">
+      {{ "Ramp Phase — $1,500 draw active" if rep.is_ramp else "Steady State" }}
+    </span>
+  </div>
+
+  <!-- Attainment Box -->
+  <div class="attainment-box">
+    <div class="att-label">Earned This Month</div>
+    <div class="att-amount">${{ "{:,.0f}".format(earned) }}</div>
+    <div class="att-sub">
+      toward ${{ "{:,.0f}".format(ramp_threshold) }} quota
+      {% if draw > 0 %}&nbsp;&nbsp;|&nbsp;&nbsp;Draw: ${{ "{:,.0f}".format(draw) }}/mo active{% endif %}
+    </div>
+    <div class="progress-wrap" style="margin-top:14px;">
+      <div class="progress-fill" style="width:{{ attainment }}%;"></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;margin-top:6px;font-size:12px;color:rgba(255,255,255,0.5);">
+      <span>$0</span>
+      <span style="color:var(--gold);font-weight:700;">{{ "{:.0f}".format(attainment) }}% attainment</span>
+      <span>${{ "{:,.0f}".format(ramp_threshold) }}</span>
+    </div>
+  </div>
+
+  <!-- Stats row -->
+  <div class="grid-4" style="margin-bottom:24px;">
+    <div class="card">
+      <div class="card-title">Active Clients</div>
+      <div class="card-value">{{ clients|length }}</div>
+      <div class="card-sub">paying subscribers</div>
+    </div>
+    <div class="card">
+      <div class="card-title">MRR Managed</div>
+      <div class="card-value">${{ "{:,.0f}".format(clients|sum(attribute='mrr') if clients else 0) }}</div>
+      <div class="card-sub">your book of business</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Pipeline Prospects</div>
+      <div class="card-value">{{ prospects|length }}</div>
+      <div class="card-sub">active opportunities</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Residual (Month 13+)</div>
+      <div class="card-value">
+        ${{ "{:,.0f}".format(clients | selectattr('subscription_month', 'greaterthan', 12) | sum(attribute='mrr') * 0.05 if clients else 0) }}
+      </div>
+      <div class="card-sub">lifetime residual/mo</div>
+    </div>
+  </div>
+
+  <!-- My Clients -->
+  <div class="section-gap">
+    <div class="section-title">My Clients — Commission by Account</div>
+    <div class="card">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Business</th>
+              <th>Plan</th>
+              <th>MRR</th>
+              <th>Sub Month</th>
+              <th>Commission Tier</th>
+              <th>My Commission/Mo</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for c in clients %}
+            {% set sub_month = c.subscription_month|int %}
+            {% if sub_month == 1 %}
+              {% set rate = 0.55 if rep.is_ramp else 0.20 %}
+              {% set tier_label = "Month 1 (55% ramp)" if rep.is_ramp else "Month 1 (20%)" %}
+            {% elif sub_month <= 6 %}
+              {% set rate = 0.20 %}
+              {% set tier_label = "Months 2–6 (20%)" %}
+            {% elif sub_month <= 12 %}
+              {% set rate = 0.10 %}
+              {% set tier_label = "Months 7–12 (10%)" %}
+            {% else %}
+              {% set rate = 0.05 %}
+              {% set tier_label = "Residual (5%)" %}
+            {% endif %}
+            <tr>
+              <td><strong>{{ c.business_name }}</strong></td>
+              <td><span class="badge badge-{{ c.plan }}">{{ c.plan|title }}</span></td>
+              <td>${{ "{:,.0f}".format(c.mrr) }}</td>
+              <td style="text-align:center;">M{{ sub_month }}</td>
+              <td style="font-size:13px;color:var(--text-muted);">{{ tier_label }}</td>
+              <td><strong style="color:var(--success);">${{ "{:,.2f}".format(c.mrr * rate) }}</strong></td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="6" style="text-align:center;color:var(--text-muted);padding:24px;">
+                No active clients yet. Close your first deal and they'll appear here.
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Commission History -->
+  {% if commission_history %}
+  <div class="section-gap">
+    <div class="section-title">Commission History</div>
+    <div class="card">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Month</th>
+              <th>Clients Earning</th>
+              <th>Total Commission</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for h in commission_history %}
+            <tr>
+              <td>{{ h.ledger_month.strftime("%B %Y") if h.ledger_month else "—" }}</td>
+              <td>{{ h.client_count }}</td>
+              <td><strong>${{ "{:,.2f}".format(h.total_commission) }}</strong></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Quick Add Prospect -->
+  <div class="section-gap">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+      <div class="section-title" style="margin:0;border:none;">Pipeline (Active Prospects)</div>
+      <button onclick="document.getElementById('add-prospect-modal').classList.add('open')" class="btn btn-gold btn-sm">+ Log Prospect</button>
+    </div>
+    <div class="card">
+      {% if prospects %}
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Business</th>
+              <th>Stage</th>
+              <th>Target Plan</th>
+              <th>City / State</th>
+              <th>Website</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for p in prospects[:5] %}
+            <tr>
+              <td><strong>{{ p.business_name }}</strong></td>
+              <td><span class="badge badge-{{ p.stage }}">{{ p.stage|title }}</span></td>
+              <td><span class="badge badge-{{ p.target_plan }}">{{ p.target_plan|title }}</span></td>
+              <td style="font-size:13px;color:var(--text-muted);">{{ p.city }}{% if p.city and p.state %}, {% endif %}{{ p.state }}</td>
+              <td style="font-size:13px;">
+                {% if p.website_url %}<a href="{{ p.website_url }}" target="_blank" style="color:var(--navy);">View Site</a>{% else %}—{% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% if prospects|length > 5 %}
+      <div style="text-align:center;margin-top:12px;">
+        <a href="/rep/pipeline" class="btn btn-outline btn-sm">View All {{ prospects|length }} Prospects</a>
+      </div>
+      {% endif %}
+      {% else %}
+      <div style="text-align:center;color:var(--text-muted);padding:24px;">
+        No prospects yet. Log your first opportunity to start building your pipeline.
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Kingdom Impact (rep's contribution) -->
+  <div class="section-gap">
+    <div class="kingdom-banner">
+      <div>
+        <div class="k-label">Your Kingdom Impact</div>
+        <div class="k-value">${{ "{:,.0f}".format((clients|sum(attribute='mrr') if clients else 0) * 0.10) }}</div>
+        <div class="k-sub">10% of your clients' MRR flowing to Kingdom causes this month</div>
+      </div>
+      <div>
+        <div class="k-label">Your Residual Potential</div>
+        <div class="k-value">${{ "{:,.0f}".format((clients|sum(attribute='mrr') if clients else 0) * 0.05) }}</div>
+        <div class="k-sub">at 5% residual if all clients reach Month 13+</div>
+      </div>
+      <div>
+        <div class="k-label">Your Mission</div>
+        <div class="k-value" style="font-size:20px;">g to G</div>
+        <div class="k-sub">mans glory to Gods Glory — spread the Gospel, grow the Kingdom</div>
+      </div>
+    </div>
+  </div>
+
+  {% else %}
+  <div class="card" style="text-align:center;padding:48px;">
+    <h2 style="color:var(--navy);margin-bottom:8px;">Welcome to GLORi Evangelists</h2>
+    <p style="color:var(--text-muted);">Your rep profile is being set up. Contact your administrator to get started.</p>
+  </div>
+  {% endif %}
+
+</div>
+
+<!-- Add Prospect Modal -->
+<div class="modal-overlay" id="add-prospect-modal">
+  <div class="modal">
+    <div class="modal-title">
+      Log New Prospect
+      <span class="modal-close" onclick="document.getElementById('add-prospect-modal').classList.remove('open')">&times;</span>
+    </div>
+    <form method="post" action="/rep/prospect/add">
+      <div class="form-group">
+        <label>Business Name *</label>
+        <input type="text" name="business_name" required placeholder="Acme Restoration Co." />
+      </div>
+      <div class="form-group">
+        <label>Contact Name</label>
+        <input type="text" name="contact_name" placeholder="John Smith" />
+      </div>
+      <div class="form-group">
+        <label>Contact Email</label>
+        <input type="email" name="contact_email" placeholder="john@example.com" />
+      </div>
+      <div class="form-group">
+        <label>Website URL</label>
+        <input type="url" name="website_url" placeholder="https://example.com" />
+      </div>
+      <div class="form-group">
+        <label>City</label>
+        <input type="text" name="city" placeholder="Tulsa" />
+      </div>
+      <div class="form-group">
+        <label>State</label>
+        <input type="text" name="state" placeholder="OK" maxlength="2" />
+      </div>
+      <div class="form-group">
+        <label>Target Plan</label>
+        <select name="target_plan">
+          <option value="foundation">Foundation — $100/mo</option>
+          <option value="builder" selected>Builder — $400/mo</option>
+          <option value="performance">Performance — $1,000/mo</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Vertical</label>
+        <select name="vertical">
+          <option value="general">General Business</option>
+          <option value="churches">Churches / Ministry</option>
+          <option value="restoration">Restoration / Trades</option>
+          <option value="coaching">Coaching / Consulting</option>
+          <option value="healthcare">Healthcare</option>
+          <option value="real_estate">Real Estate</option>
+          <option value="retail">Retail</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Notes</label>
+        <textarea name="notes" rows="2" placeholder="Any relevant context..."></textarea>
+      </div>
+      <button type="submit" class="btn btn-primary" style="width:100%;">Log Prospect</button>
+    </form>
+  </div>
+</div>
+{% endblock %}
