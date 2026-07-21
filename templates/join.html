@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GLORi Evangelist Program</title>
+<meta name="description" content="Join the GLORi Evangelist Program. Represent GLORi products &mdash; Marketing51 and Quetrex &mdash; earn recurring income, and fund global Kingdom impact.">
+<style>
+  :root {
+    --navy: #1C2B35;
+    --navy-light: #263a47;
+    --gold: #C9A84C;
+    --cream: #F7F3E8;
+    --white: #FFFFFF;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: Georgia, 'Times New Roman', serif;
+    background: var(--navy);
+    color: var(--cream);
+    line-height: 1.7;
+  }
+  .sans { font-family: 'Helvetica Neue', Arial, sans-serif; }
+  header {
+    padding: 24px 5%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid rgba(201,168,76,0.3);
+  }
+  .logo { font-size: 1.6rem; letter-spacing: 2px; color: var(--cream); font-weight: bold; }
+  .logo span { color: var(--gold); }
+  .btn {
+    display: inline-block;
+    background: var(--gold);
+    color: var(--navy);
+    padding: 14px 34px;
+    text-decoration: none;
+    font-weight: bold;
+    border-radius: 4px;
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    letter-spacing: 0.5px;
+  }
+  .btn:hover { background: var(--cream); }
+  .btn-outline {
+    background: transparent;
+    border: 2px solid var(--gold);
+    color: var(--gold);
+  }
+  .hero {
+    text-align: center;
+    padding: 90px 6% 70px;
+    background: linear-gradient(180deg, var(--navy) 0%, var(--navy-light) 100%);
+  }
+  .hero h1 { font-size: 2.8rem; color: var(--white); margin-bottom: 18px; }
+  .hero h1 em { color: var(--gold); font-style: normal; }
+  .hero p.lead { font-size: 1.25rem; max-width: 720px; margin: 0 auto 34px; color: var(--cream); }
+  .tag {
+    display: inline-block;
+    border: 1px solid var(--gold);
+    color: var(--gold);
+    padding: 6px 18px;
+    border-radius: 30px;
+    font-size: 0.85rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 26px;
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+  }
+  section { padding: 70px 6%; }
+  section.alt { background: var(--navy-light); }
+  h2 {
+    font-size: 2rem;
+    color: var(--gold);
+    text-align: center;
+    margin-bottom: 12px;
+  }
+  .sub {
+    text-align: center;
+    max-width: 700px;
+    margin: 0 auto 46px;
+    color: var(--cream);
+    opacity: 0.9;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 26px;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+  .card {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(201,168,76,0.35);
+    border-radius: 8px;
+    padding: 32px 28px;
+  }
+  .card h3 { color: var(--white); font-size: 1.3rem; margin-bottom: 8px; }
+  .card .price { color: var(--gold); font-size: 2.2rem; font-weight: bold; }
+  .card .price small { font-size: 1rem; color: var(--cream); font-weight: normal; }
+  .card ul { list-style: none; margin-top: 16px; }
+  .card ul li { padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.07); font-size: 0.98rem; }
+  .card ul li:last-child { border-bottom: none; }
+  .card ul li::before { content: "\2726"; color: var(--gold); margin-right: 10px; }
+  .highlight-card {
+    border: 2px solid var(--gold);
+    background: rgba(201,168,76,0.08);
+  }
+  table {
+    width: 100%;
+    max-width: 900px;
+    margin: 0 auto;
+    border-collapse: collapse;
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+  }
+  th, td {
+    padding: 16px 14px;
+    text-align: left;
+    border-bottom: 1px solid rgba(201,168,76,0.3);
+  }
+  th { color: var(--gold); text-transform: uppercase; letter-spacing: 1px; font-size: 0.85rem; }
+  td { color: var(--cream); }
+  td.gold { color: var(--gold); font-weight: bold; }
+  .big-number { font-size: 2.6rem; color: var(--gold); font-weight: bold; display: block; }
+  .stat { text-align: center; }
+  .stat p { font-size: 0.95rem; opacity: 0.9; }
+  .steps { max-width: 850px; margin: 0 auto; counter-reset: step; }
+  .step {
+    display: flex;
+    gap: 22px;
+    margin-bottom: 30px;
+    align-items: flex-start;
+  }
+  .step-num {
+    min-width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: var(--gold);
+    color: var(--navy);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 1.2rem;
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+  }
+  .step h3 { color: var(--white); margin-bottom: 4px; }
+  .cta-final {
+    text-align: center;
+    padding: 90px 6%;
+    background: linear-gradient(180deg, var(--navy-light) 0%, var(--navy) 100%);
+  }
+  .cta-final h2 { font-size: 2.3rem; }
+  footer {
+    padding: 40px 6%;
+    text-align: center;
+    border-top: 1px solid rgba(201,168,76,0.3);
+    font-size: 0.9rem;
+    opacity: 0.85;
+  }
+  footer a { color: var(--gold); text-decoration: none; }
+  .mission-band {
+    background: var(--gold);
+    color: var(--navy);
+    text-align: center;
+    padding: 18px 6%;
+    font-weight: bold;
+    letter-spacing: 1px;
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+  }
+  @media (max-width: 640px) {
+    .hero h1 { font-size: 2rem; }
+    h2 { font-size: 1.6rem; }
+    table { font-size: 0.85rem; }
+    th, td { padding: 10px 8px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">GLOR<span>i</span></div>
+  <a class="btn btn-outline sans" href="#apply">Apply Now</a>
+</header>
+
+<div class="hero">
+  <div class="tag">GLORi Evangelist Program</div>
+  <h1>Sell With Purpose.<br>Earn With Integrity.<br><em>Change the World.</em></h1>
+  <p class="lead">You represent GLORi Technologies and the products it builds &mdash; starting with Marketing51, the AI Website + Marketing OS for small business, and Quetrex, the AI build platform for larger organizations. As a GLORi Evangelist, you earn real recurring income while 100% of GLORi's distributable profits fund global Kingdom impact.</p>
+  <a class="btn" href="#apply">Become an Evangelist</a>
+</div>
+
+<div class="mission-band">g to G &mdash; Redirecting man's glory to God's Glory</div>
+
+<section>
+  <h2>What You're Selling</h2>
+  <p class="sub">GLORi Technologies builds the products; you carry them into the market. Two product lines are in scope today &mdash; a monthly SMB offering and a sales-assisted enterprise platform. (GLORi Insurance and GLORi Financial are <strong>not</strong> in scope &mdash; they require separate licensing.)</p>
+
+  <h3 style="text-align:center; color:var(--white); margin-top:10px;">Marketing51 &mdash; the SMB product</h3>
+  <p class="sub" style="margin-bottom:26px;">Live, proven, and priced for every small business. It starts with a free 101-point website audit, then delivers an AI-powered website rebuild and a complete marketing operating system. No contracts. Real results.</p>
+  <div class="grid">
+    <div class="card">
+      <h3>Foundation</h3>
+      <div class="price">$100<small>/mo</small></div>
+      <ul>
+        <li>101-point website audit</li>
+        <li>AI website essentials</li>
+        <li>Perfect entry point for any business</li>
+      </ul>
+    </div>
+    <div class="card highlight-card">
+      <h3>Builder</h3>
+      <div class="price">$400<small>/mo</small></div>
+      <ul>
+        <li>Full AI website rebuild</li>
+        <li>Ongoing marketing OS</li>
+        <li>The sweet spot for most clients</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Performance</h3>
+      <div class="price">$1,000<small>/mo</small></div>
+      <ul>
+        <li>Everything in Builder</li>
+        <li>Performance marketing engine</li>
+        <li>For businesses serious about growth</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3 style="text-align:center; color:var(--white); margin-top:52px;">Quetrex &amp; Build.Glori &mdash; the enterprise product</h3>
+  <p class="sub" style="margin-bottom:26px;">Quetrex is GLORi's AI control plane and build platform for larger organizations &mdash; sales-assisted, six-figure, and built with you rather than sold off a rate card. When you find a business that's outgrown a monthly plan, you bring GLORi's team in and stay on the relationship.</p>
+  <div class="grid" style="max-width:760px;">
+    <div class="card">
+      <h3>Quetrex</h3>
+      <div class="price">Enterprise</div>
+      <ul>
+        <li>AI control plane &amp; build platform</li>
+        <li>Sales-assisted, consultative close</li>
+        <li>Larger deals, retention-held comp</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Build.Glori</h3>
+      <div class="price">Platform</div>
+      <ul>
+        <li>The build surface behind the vision</li>
+        <li>For organizations ready to go deep</li>
+        <li>You open the door; GLORi builds</li>
+      </ul>
+    </div>
+  </div>
+  <p class="sub" style="margin-top:22px; font-size:0.95rem;"><em>Enterprise compensation is bespoke &mdash; larger and retention-gated &mdash; and set per deal with sales leadership, not on the monthly table below. The recurring commission plan that follows is the Marketing51 (SMB) structure.</em></p>
+</section>
+
+<section class="alt">
+  <h2>The Commission Plan (Marketing51)</h2>
+  <p class="sub">The recurring plan for the SMB product. You earn 20% of everything your Marketing51 clients pay, every month, for the first 12 months of each client. Sell once, get paid twelve times. (Enterprise/Quetrex deals are compensated separately, per deal.)</p>
+  <table>
+    <tr><th>Plan Sold</th><th>Client Pays</th><th>You Earn Monthly</th><th>You Earn Per Client (12 mo)</th></tr>
+    <tr><td>Foundation</td><td>$100/mo</td><td class="gold">$20/mo</td><td class="gold">$240</td></tr>
+    <tr><td>Builder</td><td>$400/mo</td><td class="gold">$80/mo</td><td class="gold">$960</td></tr>
+    <tr><td>Performance</td><td>$1,000/mo</td><td class="gold">$200/mo</td><td class="gold">$2,400</td></tr>
+  </table>
+  <div class="grid" style="margin-top:50px;">
+    <div class="card stat">
+      <span class="big-number">$500</span>
+      <p>Fast Start Bonus &mdash; close 3 clients in your first 30 days</p>
+    </div>
+    <div class="card stat">
+      <span class="big-number">25%</span>
+      <p>Senior Evangelist rate &mdash; unlocked at 5 active clients</p>
+    </div>
+    <div class="card stat">
+      <span class="big-number">10%</span>
+      <p>Leader override on your entire team's client MRR</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>What Evangelists Actually Earn</h2>
+  <p class="sub">Real math. No hype. Here is what a consistent Evangelist builds with Builder-tier clients at $400/mo.</p>
+  <table>
+    <tr><th>Your Active Clients</th><th>Client MRR</th><th>Your Monthly Income</th></tr>
+    <tr><td>3 clients</td><td>$1,200</td><td class="gold">$240/mo</td></tr>
+    <tr><td>10 clients</td><td>$4,000</td><td class="gold">$800/mo</td></tr>
+    <tr><td>25 clients</td><td>$10,000</td><td class="gold">$2,000/mo (at 20%)</td></tr>
+    <tr><td>25 clients as Senior Evangelist</td><td>$10,000</td><td class="gold">$2,500/mo (at 25%)</td></tr>
+  </table>
+  <p class="sub" style="margin-top:30px;">A Leader with a team of 5 Evangelists each holding 10 Builder clients earns a 10% override on $20,000 of team MRR &mdash; that's $2,000/mo on top of personal commissions.</p>
+</section>
+
+<section class="alt">
+  <h2>Sales Goals: Your First 90 Days</h2>
+  <p class="sub">We launch in the Tulsa metro first, then Tampa. These are the milestones every new Evangelist commits to.</p>
+  <div class="grid">
+    <div class="card">
+      <h3>Days 1&ndash;30</h3>
+      <ul>
+        <li>Complete Evangelist onboarding</li>
+        <li>Run 20 free website audits</li>
+        <li>Close 2 paying clients</li>
+        <li>Close 3 and earn the $500 Fast Start Bonus</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Days 31&ndash;60</h3>
+      <ul>
+        <li>Run 25 audits</li>
+        <li>Reach 5 total active clients</li>
+        <li>Unlock Senior Evangelist (25%)</li>
+        <li>Ask every client for 2 referrals</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Days 61&ndash;90</h3>
+      <ul>
+        <li>Reach 10 total active clients</li>
+        <li>$800+ in monthly recurring commission</li>
+        <li>Qualify for the Leader track</li>
+        <li>Help open a new territory</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Two Tracks. One Mission.</h2>
+  <p class="sub">Everyone starts as an Evangelist. Leaders are built, not appointed.</p>
+  <div class="grid" style="max-width:900px;">
+    <div class="card">
+      <h3>Evangelist Track</h3>
+      <ul>
+        <li>Evangelist: 20% recurring commission</li>
+        <li>Senior Evangelist: 25% at 5 active clients</li>
+        <li>No caps, no quotas to keep your rate</li>
+        <li>Sell in person or remote</li>
+      </ul>
+    </div>
+    <div class="card highlight-card">
+      <h3>Leader Track</h3>
+      <ul>
+        <li>Qualify: 10 active clients + recruit 3 Evangelists</li>
+        <li>Keep your personal 25% commission</li>
+        <li>Earn 10% override on all team client MRR</li>
+        <li>Team goal: $10,000 team MRR by day 90</li>
+        <li>Lead a territory: Tulsa, Tampa, and beyond</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="alt">
+  <h2>The Evangelist Playbook</h2>
+  <p class="sub">Our recommended path to your first clients. The free audit does the selling for you.</p>
+  <div class="steps">
+    <div class="step"><div class="step-num">1</div><div><h3>Lead with the free 101-point audit</h3><p>Every local business owner wants to know what's broken on their website. Offer the audit free, no strings. It opens every door.</p></div></div>
+    <div class="step"><div class="step-num">2</div><div><h3>Present the audit in person or on a call</h3><p>Walk through the top 5 findings. The gap between where they are and where they could be sells the rebuild.</p></div></div>
+    <div class="step"><div class="step-num">3</div><div><h3>Recommend the right tier, not the biggest one</h3><p>Integrity first. A right-sized client stays for years. Most businesses land at Builder.</p></div></div>
+    <div class="step"><div class="step-num">4</div><div><h3>No contracts means no pressure</h3><p>Clients can leave any month. That's your strongest close: there is zero risk to starting today.</p></div></div>
+    <div class="step"><div class="step-num">5</div><div><h3>Ask every happy client for two referrals</h3><p>Referrals close at triple the rate of cold outreach. Build your book through generosity and results. Once a client is thriving, invite them into the <strong>GLORi Ambassador Program</strong> &mdash; that's our separate referral program for <em>customers</em>, who earn account credit or giving in their name. You're an Evangelist; they're an Ambassador. The two never mix.</p></div></div>
+  </div>
+</section>
+
+<section>
+  <h2>Why GLORi Is Different</h2>
+  <p class="sub">GLORi Technologies commits 100% of distributable profits to the GLORi Foundation, a 501(c)(3) funding 18 biblically-rooted giving categories around the world: clean water, orphan care, medical missions, human trafficking rescue, and more. Our leaders serve at half of market compensation because the mission is the reward. When you place a GLORi product &mdash; whether a small business on Marketing51 or an enterprise on Quetrex &mdash; the customer wins, you earn honest income, and lives change around the world. Global impact, one life at a time.</p>
+</section>
+
+<div class="cta-final" id="apply">
+  <div class="tag">Now Recruiting: Tulsa Metro &amp; Tampa</div>
+  <h2>We're Looking for World Changers</h2>
+  <p class="sub">GLORi invites world-class people to give their time, talent, and expertise to something bigger than a paycheck. If you can sell with integrity and serve with excellence, we want to talk to you.</p>
+  <a class="btn" href="mailto:steve.ewald@glori.com?subject=GLORi%20Evangelist%20Application">Apply to Become an Evangelist</a>
+  <p style="margin-top:22px; font-size:0.95rem;">Email <a href="mailto:steve.ewald@glori.com" style="color:var(--gold);">steve.ewald@glori.com</a> with your name, city, and why you want to be a World Changer.</p>
+</div>
+
+<footer>
+  <div class="logo" style="font-size:1.2rem; margin-bottom:10px;">GLOR<span>i</span></div>
+  <p>GLORi Technologies &middot; Tulsa, Oklahoma &middot; <a href="https://gloritechnologies.com">GloriTechnologies.com</a> &middot; <a href="https://gloriholdings.com">GloriHoldings.com</a></p>
+  <p style="margin-top:8px;">g to G &mdash; Redirecting man's glory to God's Glory. 100% of distributable profits fund the GLORi Foundation.</p>
+</footer>
+
+</body>
+</html>

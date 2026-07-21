@@ -8,8 +8,24 @@ Python 3.12 / FastAPI / Jinja2 / Postgres, deployed to Fly at
 engine, `db.py` the data layer, `schema.sql` the schema.
 
 > The previous README described this repo as a "M51 Sales Rep & Leader Landing
-> Page." That was never what it is — the recruiting landing page is the separate
-> `m51-evangelists` repo.
+> Page." That was never what it is — the platform is here, and the public
+> recruiting page is now folded in too, at `GET /join` (see below).
+
+## Public recruiting page — `GET /join`
+
+`templates/join.html`. Recruits Evangelists across the two in-scope product lines:
+**Marketing51** (SMB, monthly commission plan) and **Quetrex / Build.Glori**
+(enterprise, sales-assisted — comp is bespoke per deal, not the monthly table).
+Folded in from the former standalone `m51-ambassadors` repo once it was clear
+Marketing51 is a GLORi product line, not a separate company. Those old repos
+(`m51-ambassadors`, `glori-ambassador`) are being archived.
+
+## Configurable ramp draw
+
+The draw is a guaranteed monthly floor for a ramping rep — **always
+non-recoverable**, and **off by default** (new reps carry skin in the game).
+Turn it on with `DRAW_ENABLED=true` (and optionally `DRAW_AMOUNT=…`) in the Fly
+environment; no code change. See `commission.py` → `draw_for()`.
 
 ## Nomenclature — this is a legal boundary, not a style choice
 

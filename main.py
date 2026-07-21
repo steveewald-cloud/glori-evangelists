@@ -22,7 +22,7 @@ from commission import (
     calculate_founders_pool,
     PLAN_MRR,
     RAMP_THRESHOLD,
-    DRAW_AMOUNT,
+    draw_for,
 )
 
 
@@ -79,6 +79,17 @@ async def require_leadership(request: Request):
     if not user or user["role"] not in ("admin", "leadership"):
         raise HTTPException(status_code=303, headers={"Location": "/login"})
     return user
+
+
+# ─── Public recruiting page ──────────────────────────────────────────────────
+
+@app.get("/join", response_class=HTMLResponse)
+async def join_page(request: Request):
+    """Public GLORi Evangelist recruiting page. Folded in from the former
+    standalone landing repo (m51-ambassadors) once it was clear Marketing51 is a
+    GLORi product line, not a separate company — so there is one Evangelist
+    program on one app. Covers Marketing51 (SMB) + Quetrex/Build.Glori (enterprise)."""
+    return templates.TemplateResponse(request, "join.html", {"request": request})
 
 
 # ─── Login / Logout ──────────────────────────────────────────────────────────
@@ -154,7 +165,7 @@ async def rep_dashboard(request: Request, user=Depends(require_user)):
 
         earned = float(commission_this_month["total"]) if commission_this_month else 0
         attainment = min(earned / 5000 * 100, 100)
-        draw = float(DRAW_AMOUNT) if rep and rep.get("is_ramp") and earned < 5000 else 0
+        draw = float(draw_for(bool(rep and rep.get("is_ramp")), earned))
 
     return templates.TemplateResponse(request, "rep_dashboard.html", {
         "request": request,
@@ -393,7 +404,7 @@ async def api_rep_earnings(rep_id: int, user=Depends(require_user)):
         "earned_this_month": earned,
         "attainment_pct": min(earned / 5000 * 100, 100),
         "is_ramp": rep["is_ramp"],
-        "draw": float(DRAW_AMOUNT) if rep["is_ramp"] and earned < 5000 else 0,
+        "draw": float(draw_for(rep["is_ramp"], earned)),
         "history": [dict(h) for h in history],
     })
 

@@ -13,7 +13,10 @@ CREATE TABLE IF NOT EXISTS reps (
     start_date DATE NOT NULL DEFAULT CURRENT_DATE,
     ramp_end_date DATE,  -- set when rep crosses $5K/mo earned
     is_ramp BOOLEAN DEFAULT TRUE,
-    draw_active BOOLEAN DEFAULT TRUE,
+    -- Per-rep draw eligibility. Subordinate to the global DRAW_ENABLED env flag
+    -- (default off): the draw only ever applies when the program-level setting is
+    -- on AND this rep is flagged. Default FALSE — new reps have skin in the game.
+    draw_active BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 

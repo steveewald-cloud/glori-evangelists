@@ -36,8 +36,34 @@ as the canonical specs define.
 It is *not* a stale name for the sales rep. A blind Ambassador→Evangelist sweep
 would corrupt the commission math. **Leave every one of these alone.**
 
-The genuinely inverted usage was in the sibling `m51-ambassadors` landing repo
-(fixed 2026-07-21, renamed `m51-evangelists`).
+The genuinely inverted usage was in the former `m51-ambassadors` landing repo
+(sales-rep page that called reps "Ambassadors"). Fixed 2026-07-21, then **folded
+into this repo** as the public `GET /join` page — Marketing51 is a GLORi product
+line, not a separate company, so there is one Evangelist program on one app. The
+old repos (`m51-ambassadors`, `glori-ambassador`) are being archived.
+
+## The `/join` recruiting page
+
+`templates/join.html`, served at `GET /join` (public, no auth). Covers the two
+in-scope product lines: **Marketing51** (SMB, the monthly commission table) and
+**Quetrex / Build.Glori** (enterprise, sales-assisted — comp is bespoke per deal,
+NOT the monthly table; v1.0 §5 flags enterprise comp as a separate open design).
+Insurance/Financial are out of scope (licensing). When editing, keep "Ambassador"
+referring only to the customer referral program, per the Nomenclature rule above.
+
+## The ramp draw is configurable (and off by default)
+
+`commission.py` → `DRAW_ENABLED` / `DRAW_AMOUNT` (env-driven) + `draw_for()`.
+A draw is a guaranteed monthly floor for a ramping rep. It is **always
+non-recoverable** (a floor top-up, never repaid) and **defaults OFF** — new reps
+carry skin in the game, income depends on selling. Turn it on with
+`DRAW_ENABLED=true` (optionally `DRAW_AMOUNT=…`) in the Fly environment; no code
+change. All three draw call sites (`commission.py`, the rep dashboard, the
+earnings API) go through `draw_for()`, so the flag governs everywhere.
+
+**Amount when on is unreconciled:** prototype says $1,500; Evangelists v1.0 §5 says
+$4,000/mo. Confirm with Steve before setting `DRAW_AMOUNT` for a real cohort. The
+giving-engine has the same toggle at the config layer (`Draw.enabled`).
 
 ## Stack
 
