@@ -1,2 +1,5 @@
 .wezterm/
 __pycache__/
+.claude/agent-memory/
+.claude/decisions.md
+.issue/

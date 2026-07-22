@@ -102,6 +102,14 @@ Carried from the current engine unless Steve says otherwise:
 Dropped by Model D: 55/20/20/10/5 rate bands, $5k ramp latch, 3% override, recoverable
 draw — all removed.
 
+**Tier rename = a data migration, not just labels.** The keys stored in
+`clients.plan` / `prospects.target_plan` change Foundation/Builder/Performance →
+Starter/Growth/Pro. `schema.sql` carries an idempotent `UPDATE … WHERE plan IN
+(legacy keys)` block (runs each startup via `db.apply_schema()`, self-noops once
+migrated) plus the new `DEFAULT 'growth'`. `mrr` is unchanged (already stored per
+row). Dashboards render `badge-{{plan}}` / `plan|title`, so stale keys would show
+wrong until migrated.
+
 ## 5. Propagation checklist (drive every surface to Model D)
 
 1. **Drive doc "v3 (No Draw)"** (`1P_MYexYOiMAEFxmmZt1TzucsnKRzv0FrwC1pqqoHdsM`) —

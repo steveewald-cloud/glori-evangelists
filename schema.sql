@@ -48,7 +48,7 @@ CREATE TABLE IF NOT EXISTS clients (
     rep_id INTEGER REFERENCES reps(id) NOT NULL,
     business_name TEXT NOT NULL,
     contact_email TEXT,
-    plan TEXT NOT NULL DEFAULT 'builder',
+    plan TEXT NOT NULL DEFAULT 'growth',
     mrr NUMERIC(10,2) NOT NULL DEFAULT 0,
     subscription_start DATE NOT NULL,
     is_ambassador_deal BOOLEAN NOT NULL DEFAULT false,
@@ -69,7 +69,7 @@ CREATE TABLE IF NOT EXISTS prospects (
     vertical TEXT DEFAULT 'general',
     city TEXT,
     state TEXT,
-    target_plan TEXT DEFAULT 'builder',
+    target_plan TEXT DEFAULT 'growth',
     notes TEXT,
     stage TEXT NOT NULL DEFAULT 'audit',
     created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -140,3 +140,25 @@ CREATE TABLE IF NOT EXISTS commission_disputes (
 );
 CREATE INDEX IF NOT EXISTS idx_disputes_rep ON commission_disputes(rep_id);
 CREATE INDEX IF NOT EXISTS idx_disputes_status ON commission_disputes(status);
+
+-- Model D tier rename (idempotent data migration): Foundation/Builder/Performance
+-- -> Starter/Growth/Pro. Runs on every startup via db.apply_schema(); self-noops
+-- once no legacy keys remain, so it is always safe to re-run. mrr is unchanged
+-- (already stored per row); this only migrates the plan label to the new keys.
+UPDATE clients
+   SET plan = CASE plan
+                  WHEN 'foundation'  THEN 'starter'
+                  WHEN 'builder'     THEN 'growth'
+                  WHEN 'performance' THEN 'pro'
+                  ELSE plan
+              END
+ WHERE plan IN ('foundation', 'builder', 'performance');
+
+UPDATE prospects
+   SET target_plan = CASE target_plan
+                         WHEN 'foundation'  THEN 'starter'
+                         WHEN 'builder'     THEN 'growth'
+                         WHEN 'performance' THEN 'pro'
+                         ELSE target_plan
+                     END
+ WHERE target_plan IN ('foundation', 'builder', 'performance');
