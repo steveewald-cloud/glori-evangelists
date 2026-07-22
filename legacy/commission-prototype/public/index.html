@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>GLORi Evangelist Commission System — Prototype</title>
+<style>
+  :root{
+    --indigo-900:#1e1b4b; --indigo-800:#26235c; --indigo-700:#312e81; --indigo-100:#e7e6f7;
+    --gold:#c8952a; --gold-soft:#f4e6c4; --gold-line:#e2c987;
+    --green:#1f7a54; --green-soft:#e2f2ea; --red:#b23b3b; --red-soft:#f7e6e6;
+    --amber:#9a6b12; --amber-soft:#fbeecb;
+    --ink:#20222c; --muted:#5c6072; --line:#e4e5ec; --bg:#f5f6fa; --card:#ffffff;
+    --shadow:0 1px 2px rgba(20,22,44,.05),0 4px 16px rgba(20,22,44,.06);
+    --radius:14px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg);color:var(--ink);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+  a{color:var(--indigo-700)}
+  header.topbar{background:linear-gradient(135deg,var(--indigo-900),var(--indigo-700));color:#fff;
+    padding:14px 22px;display:flex;align-items:center;gap:18px;flex-wrap:wrap;position:sticky;top:0;z-index:50;box-shadow:0 2px 12px rgba(20,22,44,.18)}
+  .brand{display:flex;align-items:center;gap:12px;margin-right:auto}
+  .logo{width:40px;height:40px;border-radius:11px;background:linear-gradient(135deg,var(--gold),#a9761b);
+    display:flex;align-items:center;justify-content:center;font-weight:800;color:#26235c;font-size:15px;letter-spacing:.5px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.25)}
+  .brand h1{font-size:16px;margin:0;font-weight:700;letter-spacing:.2px}
+  .brand .tag{font-size:11px;opacity:.72;margin-top:1px}
+  .switcher{display:flex;gap:6px;background:rgba(255,255,255,.10);padding:5px;border-radius:11px}
+  .switcher button{background:transparent;border:0;color:#dcdcf0;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;transition:.15s}
+  .switcher button.active{background:#fff;color:var(--indigo-900);box-shadow:var(--shadow)}
+  .switcher button:hover:not(.active){background:rgba(255,255,255,.08);color:#fff}
+  .who{display:flex;align-items:center;gap:9px;font-size:13px}
+  .who select{background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.25);border-radius:8px;padding:7px 9px;font-size:13px}
+  .who select option{color:#20222c}
+  main{max-width:1180px;margin:0 auto;padding:26px 22px 80px}
+  .banner{background:var(--gold-soft);border:1px solid var(--gold-line);color:#6a4e12;border-radius:12px;padding:11px 15px;font-size:13px;margin-bottom:22px;display:flex;gap:9px;align-items:flex-start}
+  .banner b{color:#5a4210}
+  h2.section{font-size:13px;text-transform:uppercase;letter-spacing:.9px;color:var(--muted);margin:30px 0 13px;font-weight:700}
+  .row{display:grid;gap:16px}
+  .cards-4{grid-template-columns:repeat(4,1fr)}
+  .cards-3{grid-template-columns:repeat(3,1fr)}
+  .cards-2{grid-template-columns:repeat(2,1fr)}
+  @media(max-width:900px){.cards-4,.cards-3,.cards-2{grid-template-columns:1fr 1fr}}
+  @media(max-width:620px){.cards-4,.cards-3,.cards-2{grid-template-columns:1fr}.brand h1{font-size:14px}}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow)}
+  .kpi .label{font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+  .kpi .value{font-size:27px;font-weight:800;margin-top:6px;letter-spacing:-.5px;color:var(--indigo-900)}
+  .kpi .sub{font-size:12px;color:var(--muted);margin-top:3px}
+  .kpi .value.green{color:var(--green)} .kpi .value.gold{color:var(--gold)}
+  .pill{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;text-transform:uppercase;letter-spacing:.4px}
+  .pill.green{background:var(--green-soft);color:var(--green)}
+  .pill.amber{background:var(--amber-soft);color:var(--amber)}
+  .pill.red{background:var(--red-soft);color:var(--red)}
+  .pill.indigo{background:var(--indigo-100);color:var(--indigo-700)}
+  .card h3{margin:0 0 4px;font-size:15px;color:var(--indigo-900)}
+  .card .hint{font-size:12px;color:var(--muted);margin:0 0 14px}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line)}
+  th{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:700}
+  td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+  tr:last-child td{border-bottom:0}
+  tbody tr:hover{background:#fafaff}
+  .tot td{font-weight:800;border-top:2px solid var(--indigo-100);background:#fbfbff}
+  .ring-wrap{display:flex;align-items:center;gap:20px}
+  .ring{flex:0 0 auto}
+  .band{display:inline-block;font-size:11px;font-weight:700;padding:2px 7px;border-radius:6px;background:#eef}
+  .band.m1{background:#efe8fb;color:#5b3b9c}.band.m2_6{background:#e2f2ea;color:#1f7a54}
+  .band.m7_12{background:#fbeecb;color:#9a6b12}.band.m13{background:#e7e6f7;color:#312e81}
+  .barrow{display:flex;align-items:center;gap:10px;margin:7px 0;font-size:13px}
+  .barrow .bl{width:96px;color:var(--muted);flex:0 0 auto}
+  .bar{height:22px;border-radius:5px;background:var(--indigo-700);min-width:2px}
+  .barrow .bv{font-variant-numeric:tabular-nums;font-weight:700;color:var(--indigo-900)}
+  .flow .seg{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px dashed var(--line);font-size:13px}
+  .flow .seg .amt{font-weight:700;font-variant-numeric:tabular-nums}
+  .flow .seg.give .amt{color:var(--gold)} .flow .seg.net .amt{color:var(--green)}
+  .trace{font-size:12px;background:#faf9ff;border:1px solid var(--indigo-100);border-radius:10px;padding:12px 14px}
+  .trace .ln{display:flex;justify-content:space-between;padding:2px 0;font-variant-numeric:tabular-nums}
+  .trace .ln.sub{color:var(--muted)} .trace .ln.tot{border-top:1px solid var(--indigo-100);margin-top:5px;padding-top:6px;font-weight:800}
+  .muted{color:var(--muted)} .small{font-size:12px}
+  .note{font-size:12px;color:var(--muted);margin-top:10px;font-style:italic}
+  .split{display:grid;grid-template-columns:1.3fr 1fr;gap:16px}
+  @media(max-width:900px){.split{grid-template-columns:1fr}}
+  .editable{border:1px dashed var(--gold-line);background:#fffdf6;border-radius:8px;padding:2px 6px;font-weight:700;color:var(--amber);cursor:text;display:inline-block;min-width:44px}
+  .foot{margin-top:40px;color:var(--muted);font-size:12px;text-align:center;border-top:1px solid var(--line);padding-top:18px}
+  .legendrow{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:6px}
+  .dot{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <div class="logo">g→G</div>
+    <div><h1>GLORi Evangelist Commission System</h1><div class="tag">Marketing51 · Interactive Prototype · Internal</div></div>
+  </div>
+  <div class="switcher" id="switcher"></div>
+  <div class="who" id="whoWrap"></div>
+</header>
+<main>
+  <div class="banner">
+    <span>⚑</span>
+    <div><b>Prototype.</b> Real commission engine (55/20/10/5 · $5K ramp · $300 onboarding · 3% override · $1,500 draw · $250 ambassador · 10% giving) running on seed data. Numbers reproduce the published <i>admin51/sales</i> and <i>company</i> tables. This demonstrates behavior for Glen to build into production — it is not the live system.</div>
+  </div>
+  <div id="view"></div>
+  <div class="foot">GLORi Technologies · Marketing51 · Commission System Prototype · “mans glory to God’s Glory” · Confidential</div>
+</main>
+<script>
+/* ============================================================
+   CONFIG — v1 M51 plan (data, not code). Editable in Admin view.
+   ============================================================ */
+const CFG = {
+  tiers:{Foundation:100, Builder:400, Performance:1000},
+  onboardingFee:300, onboardingRepPct:0.50,
+  rates:{ m1_ramp:0.55, m1_steady:0.20, m2_6:0.20, m7_12:0.10, m13:0.05 },
+  rampThreshold:5000,           // rep monthly earnings that latch to steady
+  draw:{amount:1500, months:3}, // months 1-3
+  overridePct:0.03, overrideMinClients:20, overrideMaxReports:5,
+  ambassadorFee:250,            // deducted from that deal's rep Month-1
+  eligibility:{warnDays:30, haircut:0.50, pauseDays:60},
+  giving:{layer1:0.10, reservePct:0.10, reserveTarget:10000},
+  ops:{fixed:1500, perClient:25},
+  foundersPoolAtScale:0.425     // editable assumption pending /founders brackets
+};
+const money = n => '$'+Math.round(n).toLocaleString('en-US');
+const money2 = n => '$'+n.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0});
+
+/* ============================================================
+   ENGINE — pure functions of (client, rep state)
+   ============================================================ */
+function bandForAge(age){ if(age<=1) return 'm1'; if(age<=6) return 'm2_6'; if(age<=12) return 'm7_12'; return 'm13'; }
+function bandLabel(b){ return {m1:'Month 1',m2_6:'Months 2–6',m7_12:'Months 7–12',m13:'Month 13+'}[b]; }
+function rateFor(age, ramp){
+  const b = bandForAge(age);
+  if(b==='m1') return ramp ? CFG.rates.m1_ramp : CFG.rates.m1_steady;
+  return CFG.rates[b];
+}
+function mrrOf(c){ return CFG.tiers[c.tier]; }
+// recurring commission on one client this month
+function clientRecurring(c, ramp){
+  const b=bandForAge(c.age), rate=rateFor(c.age,ramp), mrr=mrrOf(c);
+  return {band:b, rate, mrr, amount: mrr*rate};
+}
+// Compute a rep's full month. ramp state is latched on the rep.
+function computeRep(rep){
+  const ramp = rep.rampState==='ramp';
+  let recurring=0, onboarding=0, ambassadorDeduct=0, ambassadorFees=0, newClients=0, upsell=0;
+  const lines=[];
+  rep.clients.forEach(c=>{
+    const r=clientRecurring(c,ramp);
+    let dedNote='';
+    // onboarding + ambassador only apply to brand-new clients (age 1)
+    if(c.age===1){
+      newClients++;
+      onboarding += CFG.onboardingFee*CFG.onboardingRepPct;
+      if(c.viaAmbassador){
+        const ded=Math.min(CFG.ambassadorFee, r.amount);
+        ambassadorDeduct += ded; ambassadorFees += CFG.ambassadorFee;
+        dedNote = ' − '+money(ded)+' amb.';
+      }
+    }
+    recurring += r.amount;
+    lines.push({name:c.name,tier:c.tier,age:c.age,band:r.band,rate:r.rate,mrr:r.mrr,amount:r.amount,viaAmb:!!c.viaAmbassador,dedNote});
+  });
+  if(rep.upsells) rep.upsells.forEach(u=> upsell += (ramp?CFG.rates.m1_ramp:CFG.rates.m1_steady)*u.newMrr );
+  const grossOwn = recurring + onboarding + upsell;
+  // eligibility haircut
+  let haircut=0, elig='full';
+  if(rep.daysSincePlacement>=CFG.eligibility.pauseDays){ elig='paused'; haircut=grossOwn - ambassadorDeduct; }
+  else if(rep.daysSincePlacement>=CFG.eligibility.warnDays){ elig='haircut'; haircut=(grossOwn-ambassadorDeduct)*CFG.eligibility.haircut; }
+  const afterAmb = grossOwn - ambassadorDeduct;
+  const afterHair = afterAmb - haircut;
+  // draw floor (months 1-3): guarantees CFG.draw.amount, recoverable
+  let drawAdvance=0, drawActive = rep.tenureMonths<=CFG.draw.months && rep.rampState==='ramp';
+  if(drawActive && afterHair < CFG.draw.amount) drawAdvance = CFG.draw.amount - afterHair;
+  const net = afterHair + drawAdvance;
+  return {ramp, lines, recurring, onboarding, upsell, newClients, grossOwn,
+    ambassadorDeduct, ambassadorFees, haircut, elig, afterHair, drawActive, drawAdvance, net,
+    clientCount:rep.clients.length, mrrBook: rep.clients.reduce((s,c)=>s+mrrOf(c),0)};
+}
+function overrideFor(lead, reps){
+  if(lead.placedClients < CFG.overrideMinClients) return {eligible:false, amount:0, team:[]};
+  const team = reps.slice(0, CFG.overrideMaxReports).map(r=>{
+    const c=computeRep(r); return {name:r.name, comp:c.grossOwn - c.ambassadorDeduct};
+  });
+  const base = team.reduce((s,t)=>s+t.comp,0);
+  return {eligible:true, amount: base*CFG.overridePct, base, team};
+}
+
+/* ============================================================
+   SEED DATA
+   ============================================================ */
+let CID=0;
+function mk(tier,age,amb){ return {name:'Client #'+(++CID), tier, age, viaAmbassador:!!amb}; }
+const TP=['Foundation','Builder','Builder','Performance']; // blended avg $475/mo
+function ageSpread(n,min,max){const a=[];for(let i=0;i<n;i++){a.push(n<=1||max<=min?min:min+Math.round((max-min)*i/(n-1)));}return a;}
+function genBook(specs){ const out=[]; specs.forEach(s=>{ const tiers=s.tiers||TP;
+  ageSpread(s.n,s.ageMin,s.ageMax).forEach((age,i)=> out.push(mk(tiers[i%tiers.length], age, s.amb&&i===0))); }); return out; }
+
+// Grace — ramping, first month, on draw. One ambassador-referred client.
+const grace={id:'grace',name:'Grace Kim',type:'1099',territory:'California',rampState:'ramp',tenureMonths:1,daysSincePlacement:1,placedClients:3,quota:5000,
+  clients:[mk('Foundation',1), mk('Builder',1), mk('Builder',1,true)]};
+// Maria — steady, ~at quota (mirrors the published Month-4 rep: 32 clients, ~$4.4K)
+const maria={id:'maria',name:'Maria Santos',type:'1099',territory:'Texas',rampState:'steady',tenureMonths:4,daysSincePlacement:6,placedClients:32,quota:5000,
+  clients:genBook([{n:8,ageMin:1,ageMax:1},{n:8,ageMin:2,ageMax:2},{n:8,ageMin:3,ageMax:3},{n:8,ageMin:4,ageMax:4}])};
+// James — scaled top performer, steady, mature book with 5% residuals — above quota
+const james={id:'james',name:'James Okafor',type:'1099',territory:'Georgia',rampState:'steady',tenureMonths:16,daysSincePlacement:3,placedClients:90,quota:5000,
+  clients:genBook([{n:8,ageMin:1,ageMax:1,amb:true},{n:34,ageMin:2,ageMax:6},{n:24,ageMin:7,ageMax:12},{n:24,ageMin:13,ageMax:16}])};
+// David — Team Lead over Grace, Maria, James (+ own book)
+const david={id:'david',name:'David Cole',type:'1099',territory:'West Region (Lead)',rampState:'steady',tenureMonths:11,daysSincePlacement:4,placedClients:30,quota:6000,isLead:true,reports:['grace','maria','james'],
+  clients:genBook([{n:6,ageMin:1,ageMax:1},{n:12,ageMin:2,ageMax:6},{n:12,ageMin:7,ageMax:11}])};
+const REPS={grace,maria,james,david};
+const REP_ORDER=['grace','maria','james','david'];
+const ambassador={name:'Ruth Adeyemi',code:'RUTH2026',conversions:[
+  {client:'Builder client (Grace)',month:'This month',fee:250,status:'earned'},
+  {client:'Performance client (James)',month:'Last month',fee:250,status:'paid'},
+  {client:'Builder client (Maria)',month:'Last month',fee:250,status:'paid'},
+]};
+
+/* ============================================================
+   VIEW STATE + CHROME
+   ============================================================ */
+const ROLES=[['rep','Rep'],['manager','Team Lead'],['admin','Admin / RevOps'],['finance','Finance']];
+let state={role:'rep', rep:'maria'};
+function renderChrome(){
+  document.getElementById('switcher').innerHTML = ROLES.map(r=>
+    `<button class="${state.role===r[0]?'active':''}" onclick="setRole('${r[0]}')">${r[1]}</button>`).join('');
+  const w=document.getElementById('whoWrap');
+  if(state.role==='rep'){
+    w.innerHTML='Viewing as '+`<select onchange="setRep(this.value)">`+
+      REP_ORDER.filter(id=>!REPS[id].isLead||id==='david').map(id=>`<option value="${id}" ${state.rep===id?'selected':''}>${REPS[id].name}</option>`).join('')+`</select>`;
+  } else if(state.role==='manager'){ w.innerHTML='Viewing as <b style="margin-left:4px">David Cole</b> (Team Lead)'; }
+  else { w.innerHTML=''; }
+}
+function setRole(r){ state.role=r; render(); }
+function setRep(v){ state.rep=v; render(); }
+
+/* ============================================================
+   SHARED WIDGETS
+   ============================================================ */
+function kpi(label,value,sub,cls){ return `<div class="card kpi"><div class="label">${label}</div><div class="value ${cls||''}">${value}</div>${sub?`<div class="sub">${sub}</div>`:''}</div>`; }
+function ring(pct){
+  const R=52, C=2*Math.PI*R, p=Math.max(0,Math.min(1,pct)), off=C*(1-p);
+  const col = p>=1?'var(--green)':p>=0.7?'var(--gold)':'var(--indigo-700)';
+  return `<svg class="ring" width="128" height="128" viewBox="0 0 128 128">
+    <circle cx="64" cy="64" r="${R}" fill="none" stroke="#ecebf6" stroke-width="13"/>
+    <circle cx="64" cy="64" r="${R}" fill="none" stroke="${col}" stroke-width="13" stroke-linecap="round"
+      stroke-dasharray="${C}" stroke-dashoffset="${off}" transform="rotate(-90 64 64)"/>
+    <text x="64" y="60" text-anchor="middle" font-size="26" font-weight="800" fill="#1e1b4b">${Math.round(p*100)}%</text>
+    <text x="64" y="80" text-anchor="middle" font-size="11" fill="#5c6072">of quota</text></svg>`;
+}
+
+/* ============================================================
+   REP VIEW
+   ============================================================ */
+function repView(){
+  const rep=REPS[state.rep]; const c=computeRep(rep);
+  const attain = c.grossOwn/rep.quota;
+  const toSteady = rep.rampState==='ramp' ? Math.max(0, CFG.rampThreshold - c.grossOwn) : 0;
+  const eligPill = c.elig==='full'?'<span class="pill green">Full eligibility</span>':
+    c.elig==='haircut'?'<span class="pill amber">−50% haircut</span>':'<span class="pill red">Paused</span>';
+  const rampPill = rep.rampState==='ramp'?'<span class="pill amber">Ramp · 55% Month-1</span>':'<span class="pill indigo">Steady · 20% Month-1</span>';
+
+  // cohort roll-up
+  const cohorts={m1:0,m2_6:0,m7_12:0,m13:0};
+  c.lines.forEach(l=>cohorts[l.band]+=l.amount);
+
+  // book table
+  const rows=c.lines.slice().sort((a,b)=>a.age-b.age).map(l=>`<tr>
+    <td>${l.name}${l.viaAmb?' <span class="pill indigo" style="font-size:9px">AMB</span>':''}</td>
+    <td>${l.tier}</td><td class="num">${money(l.mrr)}</td>
+    <td>Mo. ${l.age} <span class="band ${l.band}">${bandLabel(l.band)}</span></td>
+    <td class="num">${Math.round(l.rate*100)}%</td>
+    <td class="num">${money(l.amount)}${l.dedNote}</td></tr>`).join('');
+
+  // trace
+  const trace=`<div class="trace">
+    <div class="ln"><span>Recurring commission (all cohorts)</span><span>${money(c.recurring)}</span></div>
+    <div class="ln sub"><span>· Month 1 (${rep.rampState==='ramp'?'55%':'20%'})</span><span>${money(cohorts.m1)}</span></div>
+    <div class="ln sub"><span>· Months 2–6 (20%)</span><span>${money(cohorts.m2_6)}</span></div>
+    <div class="ln sub"><span>· Months 7–12 (10%)</span><span>${money(cohorts.m7_12)}</span></div>
+    <div class="ln sub"><span>· Month 13+ residual (5%)</span><span>${money(cohorts.m13)}</span></div>
+    <div class="ln"><span>Onboarding (${c.newClients} new × $150)</span><span>${money(c.onboarding)}</span></div>
+    ${c.upsell?`<div class="ln"><span>Upsell bonus</span><span>${money(c.upsell)}</span></div>`:''}
+    <div class="ln tot"><span>Gross</span><span>${money(c.grossOwn)}</span></div>
+    ${c.ambassadorDeduct?`<div class="ln sub"><span>− Ambassador deduction</span><span>−${money(c.ambassadorDeduct)}</span></div>`:''}
+    ${c.haircut?`<div class="ln sub"><span>− Eligibility haircut</span><span>−${money(c.haircut)}</span></div>`:''}
+    ${c.drawAdvance?`<div class="ln sub"><span>+ Draw floor top-up (recoverable)</span><span>+${money(c.drawAdvance)}</span></div>`:''}
+    <div class="ln tot"><span>Net this month</span><span>${money(c.net)}</span></div>
+  </div>`;
+
+  return `
+  <h2 class="section">${rep.name} · ${rep.type} · ${rep.territory} ${rampPill} ${eligPill}</h2>
+  <div class="row cards-4">
+    ${kpi('Est. commission (MTD)', money(c.grossOwn), 'Gross, before deductions','gold')}
+    ${kpi('Net this month', money(c.net), c.drawAdvance?('incl. '+money(c.drawAdvance)+' draw floor'):'take-home','green')}
+    ${kpi('Active clients', c.clientCount, money(c.mrrBook)+' MRR sourced')}
+    ${kpi('Kingdom giving', money(c.mrrBook*CFG.giving.layer1), 'your book funds this / mo','gold')}
+  </div>
+  <div class="split" style="margin-top:16px">
+    <div class="card">
+      <h3>Where you stand</h3><p class="hint">Quota ${money(rep.quota)}/mo in rep earnings.</p>
+      <div class="ring-wrap">
+        ${ring(attain)}
+        <div style="flex:1">
+          ${rep.rampState==='ramp'
+            ? `<div class="pill amber" style="margin-bottom:8px">Path to steady</div><p style="margin:0 0 10px">You're <b>${money(toSteady)}</b> away from $5,000/mo. Reaching it drops your Month-1 rate 55%→20% and ends your draw.</p>`
+            : `<div class="pill green" style="margin-bottom:8px">Steady state reached</div><p style="margin:0 0 10px">You're at steady state — Month-1 rate is 20% and the ramp draw has ended.</p>`}
+          <div class="barrow"><span class="bl">Draw floor</span><div class="bar" style="width:${rep.rampState==='ramp'?'120px':'0'};background:var(--gold)"></div><span class="bv">${c.drawActive?money(CFG.draw.amount)+(c.drawAdvance?' (used '+money(c.drawAdvance)+')':' (covered by earnings)'):'Ended'}</span></div>
+          <div class="barrow"><span class="bl">Eligibility</span><span class="bv small">${rep.daysSincePlacement} days since last placement · penalty at 30d</span></div>
+        </div>
+      </div>
+      <div class="legendrow"><span><span class="dot" style="background:#5b3b9c"></span>M1</span><span><span class="dot" style="background:#1f7a54"></span>M2–6</span><span><span class="dot" style="background:#9a6b12"></span>M7–12</span><span><span class="dot" style="background:#312e81"></span>M13+ residual</span></div>
+    </div>
+    <div class="card">
+      <h3>This month's pay — why this number</h3><p class="hint">Every line is traceable (an auditable calc-trace per the spec).</p>
+      ${trace}
+    </div>
+  </div>
+  <h2 class="section">My book — ${c.clientCount} clients by cohort age</h2>
+  <div class="card">
+    <table><thead><tr><th>Client</th><th>Tier</th><th class="num">MRR</th><th>Subscription age</th><th class="num">Rate</th><th class="num">Commission / mo</th></tr></thead>
+    <tbody>${rows}
+    <tr class="tot"><td colspan="2">Totals</td><td class="num">${money(c.mrrBook)}</td><td></td><td></td><td class="num">${money(c.recurring)}</td></tr></tbody></table>
+    <p class="note">Cohort step-downs are automatic: clients moving from Month 6→7 drop 20%→10%, and 12→13 drop to the 5% residual. The prototype recomputes on the fly.</p>
+  </div>`;
+}
+
+/* ============================================================
+   MANAGER (TEAM LEAD) VIEW
+   ============================================================ */
+function managerView(){
+  const lead=david;
+  const reports=lead.reports.map(id=>REPS[id]);
+  const ov=overrideFor(lead, reports);
+  const own=computeRep(lead);
+  const teamRows=reports.map(r=>{
+    const c=computeRep(r); const at=c.grossOwn/r.quota;
+    return `<tr><td>${r.name}</td><td>${r.territory}</td>
+      <td>${r.rampState==='ramp'?'<span class="pill amber">Ramp</span>':'<span class="pill indigo">Steady</span>'}</td>
+      <td class="num">${c.clientCount}</td><td class="num">${money(c.mrrBook)}</td>
+      <td class="num">${Math.round(at*100)}%</td><td class="num">${money(c.grossOwn-c.ambassadorDeduct)}</td></tr>`;
+  }).join('');
+  const teamComp=ov.base||0;
+  const teamMrr=reports.reduce((s,r)=>s+computeRep(r).mrrBook,0);
+  return `
+  <h2 class="section">David Cole · Team Lead · West Region</h2>
+  <div class="row cards-4">
+    ${kpi('Team override (3%)', money(ov.amount), 'on '+money(teamComp)+' team comp','gold')}
+    ${kpi('My own commission', money(own.grossOwn), own.clientCount+' personal clients')}
+    ${kpi('Total earnings', money(ov.amount+own.grossOwn), 'override + personal','green')}
+    ${kpi('Team MRR sourced', money(teamMrr), reports.length+' reps · '+reports.reduce((s,r)=>s+computeRep(r).clientCount,0)+' clients')}
+  </div>
+  <div class="card" style="margin-top:16px">
+    <h3>My team</h3><p class="hint">Override eligibility: ${lead.placedClients} clients placed (≥20 ✓) · up to 5 direct reports · 3% funded by company, never deducted from reps.</p>
+    <table><thead><tr><th>Rep</th><th>Territory</th><th>State</th><th class="num">Clients</th><th class="num">MRR</th><th class="num">Attainment</th><th class="num">Comp (mo)</th></tr></thead>
+    <tbody>${teamRows}
+    <tr class="tot"><td colspan="3">Team total</td><td class="num">${reports.reduce((s,r)=>s+computeRep(r).clientCount,0)}</td><td class="num">${money(teamMrr)}</td><td></td><td class="num">${money(teamComp)}</td></tr>
+    </tbody></table>
+    <p class="note">Multi-level ready: a leader over leaders rolls up their whole subtree. Override applies to all commission types (onboarding, M1, recurring, residual).</p>
+  </div>`;
+}
+
+/* ============================================================
+   ADMIN / REVOPS VIEW
+   ============================================================ */
+function adminView(){
+  const rateRows=[['Month 1 — Ramp','m1_ramp'],['Month 1 — Steady','m1_steady'],['Months 2–6','m2_6'],['Months 7–12','m7_12'],['Month 13+ (residual)','m13']]
+    .map(r=>`<tr><td>${r[0]}</td><td class="num"><span class="editable">${Math.round(CFG.rates[r[1]]*100)}%</span></td></tr>`).join('');
+  // company goal cascade (Dec 2026 target)
+  const goal=[['July','+8',10,5000],['August','+20',30,15000],['September','+30',60,30000],['October','+40',100,50000],['November','+50',150,75000],['December (target)','+60',210,105000]];
+  const goalRows=goal.map(g=>`<tr><td>${g[0]}</td><td class="num">${g[1]}</td><td class="num">${g[2]}</td><td class="num">${money(g[3])}</td><td class="num">${money(g[3]*12)}</td></tr>`).join('');
+  const repRows=REP_ORDER.map(id=>{const r=REPS[id];const c=computeRep(r);
+    return `<tr><td>${r.name}${r.isLead?' <span class="pill indigo" style="font-size:9px">LEAD</span>':''}</td><td>${r.type}</td><td>${r.territory}</td>
+    <td class="num">${c.clientCount}</td><td class="num">${money(r.quota)}</td><td class="num">${Math.round(c.grossOwn/r.quota*100)}%</td>
+    <td>${r.rampState==='ramp'?'<span class="pill amber">Ramp</span>':'<span class="pill indigo">Steady</span>'}</td></tr>`;}).join('');
+  return `
+  <h2 class="section">Admin / RevOps · Plan &amp; Quota Control</h2>
+  <div class="split">
+    <div class="card">
+      <h3>Comp plan — M51 Direct 1099 · v1</h3><p class="hint">Everything here is configuration (data, not code). Edit a rate → preview impact → publish a new version. Effective-dated; paid periods stay immutable.</p>
+      <table><thead><tr><th>Subscription-month band</th><th class="num">Rep rate</th></tr></thead><tbody>${rateRows}</tbody></table>
+      <div class="legendrow" style="margin-top:12px">
+        <span>Onboarding <b>$300</b> · rep <b>50%</b></span><span>Ramp threshold <b>$5,000</b>/mo</span><span>Draw <b>$1,500</b> ×3mo</span><span>Override <b>3%</b></span><span>Ambassador <b>$250</b></span>
+      </div>
+      <p class="note">“Adjust on the fly”: changing any value forks a new plan version with an effective date and an audit trail. A simulator (spec §22) previews the payout impact before publish.</p>
+    </div>
+    <div class="card">
+      <h3>Company goal → cascade</h3><p class="hint">Enter the annual goal; it cascades to monthly MRR/ARR and rep quotas. Source: admin51/roadmap.</p>
+      <table><thead><tr><th>Month</th><th class="num">New</th><th class="num">Clients</th><th class="num">MRR</th><th class="num">ARR</th></tr></thead><tbody>${goalRows}</tbody></table>
+      <p class="note">Dec 2026 target $105K MRR ≈ $1.26M ARR · ~210 clients. Rep quota $5,000/mo earnings by Month 3 (≈8 clients/mo).</p>
+    </div>
+  </div>
+  <h2 class="section">Salesforce</h2>
+  <div class="card">
+    <table><thead><tr><th>Rep</th><th>Type</th><th>Territory</th><th class="num">Clients</th><th class="num">Quota</th><th class="num">Attainment</th><th>State</th></tr></thead><tbody>${repRows}</tbody></table>
+    <p class="note">Admin manages territories, org hierarchy (multi-level), onboarding (1099 vs W-2), quotas &amp; ramp schedules, manual adjustments, and period open/close — all audited.</p>
+  </div>`;
+}
+
+/* ============================================================
+   FINANCE VIEW — payout run + company money-flow
+   ============================================================ */
+function financeView(){
+  const all=REP_ORDER.map(id=>({rep:REPS[id], c:computeRep(REPS[id])}));
+  const totalMrr=all.reduce((s,x)=>s+x.c.mrrBook,0);
+  const totalClients=all.reduce((s,x)=>s+x.c.clientCount,0);
+  const repComp=all.reduce((s,x)=>s+(x.c.grossOwn - x.c.ambassadorDeduct - x.c.haircut),0);
+  const ambFees=all.reduce((s,x)=>s+x.c.ambassadorFees,0);
+  const ov=overrideFor(david,[grace,maria,james]).amount;
+  const drawExposure=all.reduce((s,x)=>s+x.c.drawAdvance,0);
+  const commissionsCost=repComp+ambFees+ov;
+  // company money-flow
+  const giving1=totalMrr*CFG.giving.layer1;
+  const pool=totalMrr*CFG.foundersPoolAtScale;
+  const ops=CFG.ops.fixed+CFG.ops.perClient*totalClients;
+  const net=totalMrr-giving1-pool-commissionsCost-ops;
+  const reserve=net>0?net*CFG.giving.reservePct:0;
+  const giving2=net-reserve;
+  const kingdom=giving1+Math.max(0,giving2);
+  const payRows=all.map(x=>{
+    const net1099=x.c.net;
+    return `<tr><td>${x.rep.name}</td><td>${x.rep.type}</td><td class="num">${money(x.c.grossOwn)}</td>
+      <td class="num">${money(x.c.ambassadorDeduct+x.c.haircut)}</td><td class="num">${x.c.drawAdvance?money(x.c.drawAdvance):'—'}</td>
+      <td class="num"><b>${money(net1099)}</b></td></tr>`;}).join('');
+  const bar=(label,val,max,col)=>`<div class="barrow"><span class="bl">${label}</span><div class="bar" style="width:${Math.max(2,val/max*260)}px;background:${col}"></div><span class="bv">${money(val)}</span></div>`;
+  const maxv=Math.max(totalMrr,pool,commissionsCost,giving1,kingdom);
+  return `
+  <h2 class="section">Finance · Payout Run — current month <span class="pill amber">Draft · in review</span></h2>
+  <div class="row cards-4">
+    ${kpi('Total net payout', money(all.reduce((s,x)=>s+x.c.net,0)), totalClients+' clients · '+all.length+' reps')}
+    ${kpi('1099 contractors', all.filter(x=>x.rep.type==='1099').length, 'W-9 → 1099-NEC track')}
+    ${kpi('Draw exposure', money(drawExposure), 'recoverable advances','gold')}
+    ${kpi('Kingdom giving (mo)', money(kingdom), 'Layer 1 + net surplus','gold')}
+  </div>
+  <div class="split" style="margin-top:16px">
+    <div class="card">
+      <h3>Payout batch — approve &amp; export</h3><p class="hint">Gross → deductions → draw → net, per rep. Export as 1099 / W-2 / accounting batches (spec §14).</p>
+      <table><thead><tr><th>Rep</th><th>Type</th><th class="num">Gross</th><th class="num">Deductions</th><th class="num">Draw</th><th class="num">Net</th></tr></thead>
+      <tbody>${payRows}<tr class="tot"><td colspan="5">Total net this run</td><td class="num">${money(all.reduce((s,x)=>s+x.c.net,0))}</td></tr></tbody></table>
+      <p class="note">No-clawback churn: cancelled clients simply stop future lines. Locked once paid; corrections go forward as adjustments.</p>
+    </div>
+    <div class="card">
+      <h3>Company money-flow · this month</h3><p class="hint">Live from the engine. Reconciles to admin51/company. Founders-pool % is an editable assumption pending exact /founders brackets.</p>
+      ${bar('Gross MRR',totalMrr,maxv,'var(--indigo-700)')}
+      ${bar('Giving #1 (10%)',giving1,maxv,'var(--gold)')}
+      ${bar('Founders pool',pool,maxv,'#7b7fae')}
+      ${bar('Commissions',commissionsCost,maxv,'#5b3b9c')}
+      ${bar('Operating',ops,maxv,'#9aa0b5')}
+      ${bar('Reserve',reserve,maxv,'#c9ccdb')}
+      ${bar('Giving #2 → Kingdom',Math.max(0,giving2),maxv,'var(--green)')}
+      <div class="flow" style="margin-top:12px">
+        <div class="seg give"><span>Total to Kingdom (mo)</span><span class="amt">${money(kingdom)}</span></div>
+        <div class="seg"><span>% of gross MRR</span><span class="amt">${Math.round(kingdom/totalMrr*100)}%</span></div>
+      </div>
+    </div>
+  </div>`;
+}
+
+/* ============================================================
+   RENDER
+   ============================================================ */
+function render(){
+  renderChrome();
+  const v=document.getElementById('view');
+  v.innerHTML = state.role==='rep'?repView():state.role==='manager'?managerView():state.role==='admin'?adminView():financeView();
+}
+render();
+</script>
+</body>
+</html>

@@ -2,9 +2,14 @@
 GLORi Evangelists Commission Engine
 Full logic for all compensation tiers, ramp/steady state, upsells, ambassador deals.
 """
+import os
 from decimal import Decimal
 from datetime import date
 from dateutil.relativedelta import relativedelta
+
+
+def _env_bool(name: str, default: bool = False) -> bool:
+    return os.environ.get(name, str(default)).strip().lower() in ("1", "true", "yes", "on")
 
 
 PLAN_MRR = {
@@ -24,8 +29,28 @@ MONTHS_7_12_RATE = Decimal("0.10")
 RESIDUAL_RATE = Decimal("0.05")
 
 RAMP_THRESHOLD = Decimal("5000.00")
-DRAW_AMOUNT = Decimal("1500.00")
+
+# --- Ramp draw (configurable) ---------------------------------------------
+# A draw is a guaranteed monthly floor for a rep still ramping (earnings under
+# RAMP_THRESHOLD). It is a company-cost setting we turn ON or OFF, and it is
+# ALWAYS **non-recoverable** — never repaid, never clawed back from future
+# commission. It is a floor top-up, not a loan.
+#
+# Default OFF. New reps carry skin in the game: income depends on selling.
+# Turn it on per-cohort/season by setting DRAW_ENABLED=true (and optionally
+# DRAW_AMOUNT) in the environment; no code change or redeploy of logic needed.
+DRAW_ENABLED = _env_bool("DRAW_ENABLED", False)
+DRAW_AMOUNT = Decimal(os.environ.get("DRAW_AMOUNT", "1500.00"))
+
 AMBASSADOR_DEDUCTION = Decimal("250.00")
+
+
+def draw_for(is_ramp: bool, earned: Decimal | float) -> Decimal:
+    """Non-recoverable ramp-draw top-up. Zero unless the draw is enabled AND the
+    rep is ramping AND still under the threshold."""
+    if DRAW_ENABLED and is_ramp and Decimal(str(earned)) < RAMP_THRESHOLD:
+        return DRAW_AMOUNT
+    return Decimal("0")
 
 KINGDOM_GIVING_RATE = Decimal("0.10")
 RESERVE_TARGET = Decimal("10000.00")
@@ -196,7 +221,7 @@ def estimate_rep_monthly_earnings(
         total += Decimal(str(rec["net_commission"]))
         breakdown.append({"type": rec["commission_type"], "amount": rec["net_commission"], "client_mrr": c["mrr"]})
 
-    draw = DRAW_AMOUNT if is_ramp and total < RAMP_THRESHOLD else Decimal("0")
+    draw = draw_for(is_ramp, total)
     total_with_draw = total + draw
 
     return {
