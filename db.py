@@ -11,7 +11,6 @@ DATABASE_URL = os.environ.get("DATABASE_URL", "")
 
 _pool = None
 
-
 async def get_pool():
     global _pool
     if _pool is None:
@@ -25,13 +24,11 @@ async def get_pool():
         await _pool.open()
     return _pool
 
-
 @asynccontextmanager
 async def get_conn():
     pool = await get_pool()
     async with pool.connection() as conn:
         yield conn
-
 
 async def apply_schema():
     schema_path = os.path.join(os.path.dirname(__file__), "schema.sql")
@@ -42,20 +39,17 @@ async def apply_schema():
         await conn.commit()
     print("Schema applied successfully.")
 
-
 async def close_pool():
     global _pool
     if _pool:
         await _pool.close()
         _pool = None
 
-
 async def get_user_by_email(conn, email: str):
     result = await conn.execute(
         "SELECT * FROM users WHERE email = %s", (email,)
     )
     return await result.fetchone()
-
 
 async def create_session(conn, id: str, user_id: int, expires):
     await conn.execute(
@@ -64,7 +58,6 @@ async def create_session(conn, id: str, user_id: int, expires):
            ON CONFLICT (id) DO NOTHING""",
         (id, user_id, expires)
     )
-
 
 async def get_session(conn, id: str):
     result = await conn.execute(
@@ -75,12 +68,10 @@ async def get_session(conn, id: str):
     )
     return await result.fetchone()
 
-
 async def delete_session(conn, id: str):
     await conn.execute(
         "DELETE FROM sessions WHERE id = %s", (id,)
     )
-
 
 async def get_all_reps(conn):
     result = await conn.execute(
@@ -88,13 +79,11 @@ async def get_all_reps(conn):
     )
     return await result.fetchall()
 
-
 async def get_rep_by_id(conn, rep_id: int):
     result = await conn.execute(
         "SELECT * FROM reps WHERE id = %s", (rep_id,)
     )
     return await result.fetchone()
-
 
 async def get_rep_clients(conn, rep_id: int):
     result = await conn.execute(
@@ -110,7 +99,6 @@ async def get_rep_clients(conn, rep_id: int):
     )
     return await result.fetchall()
 
-
 async def get_rep_prospects(conn, rep_id: int):
     result = await conn.execute(
         """SELECT * FROM prospects
@@ -119,7 +107,6 @@ async def get_rep_prospects(conn, rep_id: int):
         (rep_id,)
     )
     return await result.fetchall()
-
 
 async def get_rep_commission_this_month(conn, rep_id: int):
     result = await conn.execute(
@@ -131,7 +118,6 @@ async def get_rep_commission_this_month(conn, rep_id: int):
         (rep_id,)
     )
     return await result.fetchone()
-
 
 async def get_all_clients(conn):
     result = await conn.execute(
@@ -147,7 +133,6 @@ async def get_all_clients(conn):
     )
     return await result.fetchall()
 
-
 async def get_all_prospects(conn):
     result = await conn.execute(
         """SELECT p.*, r.name as rep_name
@@ -158,19 +143,17 @@ async def get_all_prospects(conn):
     )
     return await result.fetchall()
 
-
-# ─── Leadership / dashboard queries ───
+# ─── Leadership / dashboard queries ──────────────────────────────────────────
 
 async def get_rep_commission_history(conn, rep_id: int):
     result = await conn.execute(
-        """SELECT ledger_month, subscription_month, commission_type, mrr,
-                  commission_amount, ambassador_deduction, net_commission, paid
+        """SELECT id, ledger_month, subscription_month, commission_type, mrr,
+           commission_amount, ambassador_deduction, net_commission, paid
            FROM commission_ledger WHERE rep_id = %s
            ORDER BY ledger_month DESC LIMIT 24""",
         (rep_id,),
     )
     return await result.fetchall()
-
 
 async def get_total_mrr(conn):
     result = await conn.execute(
@@ -179,7 +162,6 @@ async def get_total_mrr(conn):
     )
     return await result.fetchone()
 
-
 async def get_mrr_by_plan(conn):
     result = await conn.execute(
         """SELECT plan, COALESCE(SUM(mrr), 0) AS mrr, COUNT(*) AS client_count
@@ -187,33 +169,39 @@ async def get_mrr_by_plan(conn):
     )
     return await result.fetchall()
 
-
 async def get_latest_giving_summary(conn):
     result = await conn.execute(
         "SELECT * FROM giving_ledger ORDER BY ledger_month DESC LIMIT 1"
     )
     return await result.fetchone()
 
-
 async def get_rep_attainment_summary(conn):
+    # total_mrr_managed and mrr_target are required by
+    # reps_management.html and leadership_dashboard.html templates.
     result = await conn.execute(
         """SELECT r.id, r.name, r.email, r.status, r.is_ramp,
-                  r.territory_state, r.territory_region, r.territory_vertical,
-                  COALESCE((SELECT SUM(cl.net_commission) FROM commission_ledger cl
-                            WHERE cl.rep_id = r.id
-                              AND cl.ledger_month = DATE_TRUNC('month', CURRENT_DATE)), 0)
-                      AS earned_this_month,
-                  COALESCE((SELECT COUNT(*) FROM clients c
-                            WHERE c.rep_id = r.id AND c.status = 'active'), 0) AS active_clients
+           r.territory_state, r.territory_region, r.territory_vertical,
+           COALESCE((SELECT SUM(cl.net_commission) FROM commission_ledger cl
+             WHERE cl.rep_id = r.id
+             AND cl.ledger_month = DATE_TRUNC('month', CURRENT_DATE)), 0)
+             AS earned_this_month,
+           COALESCE((SELECT COUNT(*) FROM clients c
+             WHERE c.rep_id = r.id AND c.status = 'active'), 0) AS active_clients,
+           COALESCE((SELECT SUM(c.mrr) FROM clients c
+             WHERE c.rep_id = r.id AND c.status = 'active'), 0) AS total_mrr_managed,
+           COALESCE((SELECT NULLIF(rq.mrr_target, 0) FROM rep_quotas rq
+             WHERE rq.rep_id = r.id
+             AND rq.quota_month = DATE_TRUNC('month', CURRENT_DATE)), 5000)
+             AS mrr_target
            FROM reps r WHERE r.status = 'active'
            ORDER BY earned_this_month DESC, r.name"""
     )
     rows = await result.fetchall()
     for row in rows:
         earned = float(row["earned_this_month"] or 0)
-        row["attainment_pct"] = round(min(earned / 5000 * 100, 100), 1)
+        target = float(row["mrr_target"] or 5000)
+        row["attainment_pct"] = round(min(earned / target * 100, 100), 1) if target > 0 else 0
     return rows
-
 
 async def get_all_clients_with_reps(conn):
     result = await conn.execute(
@@ -222,3 +210,84 @@ async def get_all_clients_with_reps(conn):
            WHERE c.status = 'active' ORDER BY c.subscription_start DESC"""
     )
     return await result.fetchall()
+
+# ─── Invite-to-accept flow ────────────────────────────────────────────────────
+
+async def get_user_by_rep_id(conn, rep_id: int):
+    result = await conn.execute(
+        "SELECT * FROM users WHERE rep_id = %s", (rep_id,)
+    )
+    return await result.fetchone()
+
+async def get_user_by_invite_token(conn, token: str):
+    result = await conn.execute(
+        """SELECT * FROM users WHERE invite_token = %s
+           AND invite_token_expires > NOW()""",
+        (token,)
+    )
+    return await result.fetchone()
+
+async def set_invite_token(conn, user_id: int, token: str, expires):
+    await conn.execute(
+        """UPDATE users SET invite_token = %s, invite_token_expires = %s,
+           invited_at = NOW() WHERE id = %s""",
+        (token, expires, user_id)
+    )
+
+async def accept_invite(conn, user_id: int, password_hash: str):
+    await conn.execute(
+        """UPDATE users SET password_hash = %s, invite_token = NULL,
+           invite_token_expires = NULL, invite_accepted_at = NOW()
+           WHERE id = %s""",
+        (password_hash, user_id)
+    )
+
+# ─── Commission disputes ──────────────────────────────────────────────────────
+
+async def create_dispute(conn, rep_id: int, ledger_id, client_name: str,
+                          dispute_type: str, description: str):
+    result = await conn.execute(
+        """INSERT INTO commission_disputes
+           (rep_id, ledger_id, client_name, dispute_type, description)
+           VALUES (%s, %s, %s, %s, %s) RETURNING id""",
+        (rep_id, ledger_id, client_name, dispute_type, description)
+    )
+    row = await result.fetchone()
+    return row["id"]
+
+async def get_rep_disputes(conn, rep_id: int):
+    result = await conn.execute(
+        """SELECT d.*, cl.ledger_month, cl.commission_type, cl.net_commission
+           FROM commission_disputes d
+           LEFT JOIN commission_ledger cl ON cl.id = d.ledger_id
+           WHERE d.rep_id = %s ORDER BY d.created_at DESC""",
+        (rep_id,)
+    )
+    return await result.fetchall()
+
+async def get_all_disputes(conn):
+    result = await conn.execute(
+        """SELECT d.*, r.name AS rep_name, r.email AS rep_email,
+           cl.ledger_month, cl.commission_type, cl.net_commission
+           FROM commission_disputes d
+           LEFT JOIN reps r ON r.id = d.rep_id
+           LEFT JOIN commission_ledger cl ON cl.id = d.ledger_id
+           ORDER BY (d.status = 'open') DESC, d.created_at DESC"""
+    )
+    return await result.fetchall()
+
+async def get_dispute_by_id(conn, dispute_id: int):
+    result = await conn.execute(
+        "SELECT * FROM commission_disputes WHERE id = %s", (dispute_id,)
+    )
+    return await result.fetchone()
+
+async def resolve_dispute(conn, dispute_id: int, status: str,
+                           resolution_notes: str, resolved_by: str):
+    await conn.execute(
+        """UPDATE commission_disputes
+           SET status = %s, resolution_notes = %s, resolved_by = %s,
+               resolved_at = NOW()
+           WHERE id = %s""",
+        (status, resolution_notes, resolved_by, dispute_id)
+    )
