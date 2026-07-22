@@ -5,6 +5,8 @@ Rep dashboards, leadership BI, commission tracking, Kingdom giving.
 import os
 import secrets
 import hashlib
+import calendar
+from collections import defaultdict
 from datetime import datetime, timedelta, date
 from decimal import Decimal
 from contextlib import asynccontextmanager
@@ -16,12 +18,14 @@ from fastapi.templating import Jinja2Templates
 
 import db
 from commission import (
-    calculate_month1_commission,
-    calculate_recurring_commission,
+    account_month_commission,
+    is_residual_qualified,
+    milestone_bonuses,
     calculate_kingdom_giving,
     calculate_founders_pool,
     PLAN_MRR,
-    RAMP_THRESHOLD,
+    RESIDUAL_GATE_ACCOUNTS,
+    YEAR_TARGET_ACCOUNTS,
     draw_for,
 )
 
@@ -145,6 +149,60 @@ async def root(request: Request):
 
 # ─── Rep Dashboard ───────────────────────────────────────────────────────────
 
+def _as_date(value):
+    if isinstance(value, datetime):
+        return value.date()
+    return value
+
+
+def _add_months(d: date, months: int) -> date:
+    """Add N calendar months to a date, clamping the day to the target
+    month's length (e.g. Jan 31 + 1 month -> Feb 28/29). Pure-stdlib
+    replacement for dateutil.relativedelta(months=N)."""
+    month_index = d.month - 1 + months
+    year = d.year + month_index // 12
+    month = month_index % 12 + 1
+    day = min(d.day, calendar.monthrange(year, month)[1])
+    return date(year, month, day)
+
+
+def _new_accounts_ytd(clients, as_of=None):
+    """Count of a rep's clients whose subscription_start falls in the
+    current calendar year — the input to is_residual_qualified()."""
+    as_of = as_of or date.today()
+    count = 0
+    for c in clients:
+        sub_start = _as_date(c.get("subscription_start"))
+        if sub_start and sub_start.year == as_of.year:
+            count += 1
+    return count
+
+
+def _milestone_windows(rep, clients):
+    """sites_month1/quarter/year counts for milestone_bonuses(), relative
+    to the rep's start_date."""
+    start_date = _as_date(rep.get("start_date")) if rep else None
+    if not start_date:
+        return 0, 0, 0
+
+    month1_end = _add_months(start_date, 1)
+    quarter_end = _add_months(start_date, 3)
+    year_end = _add_months(start_date, 12)
+
+    sites_month1 = sites_quarter = sites_year = 0
+    for c in clients:
+        sub_start = _as_date(c.get("subscription_start"))
+        if not sub_start or sub_start < start_date:
+            continue
+        if sub_start < month1_end:
+            sites_month1 += 1
+        if sub_start < quarter_end:
+            sites_quarter += 1
+        if sub_start < year_end:
+            sites_year += 1
+    return sites_month1, sites_quarter, sites_year
+
+
 @app.get("/rep", response_class=HTMLResponse)
 async def rep_dashboard(request: Request, user=Depends(require_user)):
     async with db.get_conn() as conn:
@@ -163,22 +221,51 @@ async def rep_dashboard(request: Request, user=Depends(require_user)):
             commission_this_month = {"total": 0, "total_ambassador_deductions": 0}
             commission_history = []
 
+        rep_employed = bool(rep) and rep.get("status") == "active"
+        new_accounts_ytd = _new_accounts_ytd(clients)
+        residual_qualified = is_residual_qualified(new_accounts_ytd)
+
         earned = float(commission_this_month["total"]) if commission_this_month else 0
-        attainment = min(earned / 5000 * 100, 100)
-        draw = float(draw_for(bool(rep and rep.get("is_ramp")), earned))
+        draw = float(draw_for(earned))
+
+        client_breakdown = []
+        for c in clients:
+            detail = account_month_commission(
+                c["mrr"],
+                c["subscription_month"],
+                is_ambassador_deal=bool(c.get("is_ambassador_deal")),
+                rep_employed=rep_employed,
+                residual_qualified=residual_qualified,
+            )
+            client_breakdown.append({
+                **c,
+                "commission_this_month": float(detail["net"]),
+                "phase": detail["phase"],
+                "rate": float(detail["rate"]),
+            })
+
+        sites_month1, sites_quarter, sites_year = _milestone_windows(rep, clients)
+        bonus_progress = milestone_bonuses(sites_month1, sites_quarter, sites_year)
 
     return templates.TemplateResponse(request, "rep_dashboard.html", {
         "request": request,
         "user": user,
         "rep": rep,
-        "clients": clients,
+        "clients": client_breakdown,
         "prospects": prospects,
         "earned": earned,
-        "attainment": attainment,
+        "commission_earned": earned,
         "draw": draw,
         "commission_history": commission_history,
-        "ramp_threshold": float(RAMP_THRESHOLD),
         "plan_mrr": PLAN_MRR,
+        "new_accounts_ytd": new_accounts_ytd,
+        "residual_qualified": residual_qualified,
+        "residual_gate": RESIDUAL_GATE_ACCOUNTS,
+        "year_target": YEAR_TARGET_ACCOUNTS,
+        "bonus_progress": bonus_progress,
+        "sites_month1": sites_month1,
+        "sites_quarter": sites_quarter,
+        "sites_year": sites_year,
         "current_month": date.today().strftime("%B %Y"),
     })
 
@@ -209,7 +296,7 @@ async def add_prospect(
     vertical: str = Form("general"),
     city: str = Form(""),
     state: str = Form(""),
-    target_plan: str = Form("builder"),
+    target_plan: str = Form("growth"),
     notes: str = Form(""),
 ):
     async with db.get_conn() as conn:
@@ -271,6 +358,23 @@ async def leadership_dashboard(request: Request, user=Depends(require_leadership
         current_reserve=Decimal("0"),
     )
 
+    # Model D: YTD new-account count per rep (vs the 50 residual gate / 100
+    # target), derived from already-fetched client rows rather than a
+    # dedicated query.
+    this_year = date.today().year
+    new_accounts_by_rep = defaultdict(int)
+    for c in all_clients:
+        sub_start = _as_date(c.get("subscription_start"))
+        if sub_start and sub_start.year == this_year:
+            new_accounts_by_rep[c.get("rep_id")] += 1
+
+    for row in rep_attainment:
+        ytd = row.get("new_accounts_ytd")
+        if ytd is None:
+            ytd = new_accounts_by_rep.get(row["id"], 0)
+        row["new_accounts_ytd"] = ytd
+        row["residual_qualified"] = is_residual_qualified(ytd)
+
     return templates.TemplateResponse(request, "leadership_dashboard.html", {
         "request": request,
         "user": user,
@@ -280,6 +384,8 @@ async def leadership_dashboard(request: Request, user=Depends(require_leadership
         "mrr_by_plan": mrr_by_plan,
         "giving_live": giving_live,
         "rep_attainment": rep_attainment,
+        "residual_gate": RESIDUAL_GATE_ACCOUNTS,
+        "year_target": YEAR_TARGET_ACCOUNTS,
         "giving_summary": giving_summary,
         "all_clients": all_clients,
         "current_month": date.today().strftime("%B %Y"),
@@ -396,15 +502,22 @@ async def api_rep_earnings(rep_id: int, user=Depends(require_user)):
             raise HTTPException(status_code=404, detail="Rep not found")
         commission = await db.get_rep_commission_this_month(conn, rep_id)
         history = await db.get_rep_commission_history(conn, rep_id)
+        clients = await db.get_rep_clients(conn, rep_id)
 
     earned = float(commission["total"]) if commission else 0
+    new_accounts_ytd = _new_accounts_ytd(clients)
+    residual_qualified = is_residual_qualified(new_accounts_ytd)
+
     return JSONResponse({
         "rep_id": rep_id,
         "rep_name": rep["name"],
         "earned_this_month": earned,
-        "attainment_pct": min(earned / 5000 * 100, 100),
-        "is_ramp": rep["is_ramp"],
-        "draw": float(draw_for(rep["is_ramp"], earned)),
+        "commission_earned": earned,
+        "new_accounts_ytd": new_accounts_ytd,
+        "residual_qualified": residual_qualified,
+        "residual_gate": RESIDUAL_GATE_ACCOUNTS,
+        "year_target": YEAR_TARGET_ACCOUNTS,
+        "draw": float(draw_for(earned)),
         "history": [dict(h) for h in history],
     })
 

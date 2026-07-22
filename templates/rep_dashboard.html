@@ -12,29 +12,30 @@
   {% if rep %}
   <!-- Territory Badge -->
   <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px;">
-    {% if rep.territory_region %}<span class="badge badge-builder">{{ rep.territory_region }}</span>{% endif %}
-    {% if rep.territory_state %}<span class="badge badge-builder">{{ rep.territory_state }}</span>{% endif %}
-    {% if rep.territory_vertical %}<span class="badge badge-foundation">{{ rep.territory_vertical|title }}</span>{% endif %}
-    <span class="badge {{ 'badge-ramp' if rep.is_ramp else 'badge-steady' }}">
-      {{ "Ramp Phase — $1,500 draw active" if rep.is_ramp else "Steady State" }}
-    </span>
+    {% if rep.territory_region %}<span class="badge badge-growth">{{ rep.territory_region }}</span>{% endif %}
+    {% if rep.territory_state %}<span class="badge badge-growth">{{ rep.territory_state }}</span>{% endif %}
+    {% if rep.territory_vertical %}<span class="badge badge-starter">{{ rep.territory_vertical|title }}</span>{% endif %}
   </div>
 
-  <!-- Attainment Box -->
+  <!-- Commission Earned Box -->
   <div class="attainment-box">
-    <div class="att-label">Earned This Month</div>
-    <div class="att-amount">${{ "{:,.0f}".format(earned) }}</div>
+    <div class="att-label">Commission Earned This Month</div>
+    <div class="att-amount">${{ "{:,.0f}".format(commission_earned) }}</div>
     <div class="att-sub">
-      toward ${{ "{:,.0f}".format(ramp_threshold) }} quota
-      {% if draw > 0 %}&nbsp;&nbsp;|&nbsp;&nbsp;Draw: ${{ "{:,.0f}".format(draw) }}/mo active{% endif %}
+      {% if residual_qualified %}
+        Residual eligible &mdash; qualified this year
+      {% else %}
+        Residual not yet qualified this year
+      {% endif %}
+      {% if draw > 0 %}&nbsp;&nbsp;|&nbsp;&nbsp;Draw top-up: ${{ "{:,.0f}".format(draw) }}/mo{% endif %}
     </div>
     <div class="progress-wrap" style="margin-top:14px;">
-      <div class="progress-fill" style="width:{{ attainment }}%;"></div>
+      <div class="progress-fill" style="width:{{ [new_accounts_ytd / residual_gate * 100, 100]|min }}%;"></div>
     </div>
     <div style="display:flex;justify-content:space-between;margin-top:6px;font-size:12px;color:rgba(255,255,255,0.5);">
-      <span>$0</span>
-      <span style="color:var(--gold);font-weight:700;">{{ "{:.0f}".format(attainment) }}% attainment</span>
-      <span>${{ "{:,.0f}".format(ramp_threshold) }}</span>
+      <span>0 new accounts</span>
+      <span style="color:var(--gold);font-weight:700;">{{ new_accounts_ytd }} / {{ residual_gate }} for residual gate</span>
+      <span>{{ year_target }} target</span>
     </div>
   </div>
 
@@ -51,16 +52,43 @@
       <div class="card-sub">your book of business</div>
     </div>
     <div class="card">
-      <div class="card-title">Pipeline Prospects</div>
-      <div class="card-value">{{ prospects|length }}</div>
-      <div class="card-sub">active opportunities</div>
+      <div class="card-title">New Accounts YTD</div>
+      <div class="card-value">{{ new_accounts_ytd }}</div>
+      <div class="card-sub">vs {{ residual_gate }} residual gate / {{ year_target }} target</div>
     </div>
     <div class="card">
-      <div class="card-title">Residual (Month 13+)</div>
-      <div class="card-value">
-        ${{ "{:,.0f}".format(clients | selectattr('subscription_month', 'greaterthan', 12) | sum(attribute='mrr') * 0.05 if clients else 0) }}
+      <div class="card-title">Residual Status</div>
+      <div class="card-value" style="font-size:20px;">
+        {{ "Qualified" if residual_qualified else "Not Qualified" }}
       </div>
-      <div class="card-sub">lifetime residual/mo</div>
+      <div class="card-sub">5% residual on months 13&ndash;60, re-qualifies annually</div>
+    </div>
+  </div>
+
+  <!-- Milestone Bonus Progress -->
+  <div class="section-gap">
+    <div class="section-title">Milestone Bonus Progress</div>
+    <div class="grid-4">
+      <div class="card">
+        <div class="card-title">Fast Start ($1,000)</div>
+        <div class="card-value" style="font-size:18px;">{{ sites_month1 }} / 10 sites (mo. 1)</div>
+        <div class="card-sub">{{ "Earned" if bonus_progress.fast_start_earned else "In progress" }}</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Quarter ($2,500)</div>
+        <div class="card-value" style="font-size:18px;">{{ sites_quarter }} / 25 sites (3 mo.)</div>
+        <div class="card-sub">{{ "Earned" if bonus_progress.quarter_earned else "In progress" }}</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Year ($10,000)</div>
+        <div class="card-value" style="font-size:18px;">{{ sites_year }} / 100 sites (12 mo.)</div>
+        <div class="card-sub">{{ "Earned" if bonus_progress.year_earned else "In progress" }}</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Total Bonuses Earned</div>
+        <div class="card-value">${{ "{:,.0f}".format(bonus_progress.total) }}</div>
+        <div class="card-sub">of $13,500 max stacked</div>
+      </div>
     </div>
   </div>
 
@@ -76,33 +104,26 @@
               <th>Plan</th>
               <th>MRR</th>
               <th>Sub Month</th>
-              <th>Commission Tier</th>
+              <th>Phase</th>
               <th>My Commission/Mo</th>
             </tr>
           </thead>
           <tbody>
             {% for c in clients %}
             {% set sub_month = c.subscription_month|int %}
-            {% if sub_month == 1 %}
-              {% set rate = 0.55 if rep.is_ramp else 0.20 %}
-              {% set tier_label = "Month 1 (55% ramp)" if rep.is_ramp else "Month 1 (20%)" %}
-            {% elif sub_month <= 6 %}
-              {% set rate = 0.20 %}
-              {% set tier_label = "Months 2–6 (20%)" %}
-            {% elif sub_month <= 12 %}
-              {% set rate = 0.10 %}
-              {% set tier_label = "Months 7–12 (10%)" %}
-            {% else %}
-              {% set rate = 0.05 %}
-              {% set tier_label = "Residual (5%)" %}
-            {% endif %}
             <tr>
               <td><strong>{{ c.business_name }}</strong></td>
               <td><span class="badge badge-{{ c.plan }}">{{ c.plan|title }}</span></td>
               <td>${{ "{:,.0f}".format(c.mrr) }}</td>
               <td style="text-align:center;">M{{ sub_month }}</td>
-              <td style="font-size:13px;color:var(--text-muted);">{{ tier_label }}</td>
-              <td><strong style="color:var(--success);">${{ "{:,.2f}".format(c.mrr * rate) }}</strong></td>
+              <td style="font-size:13px;color:var(--text-muted);">
+                {% if c.phase == "commission" %}Commission (20%)
+                {% elif c.phase == "residual" and c.rate > 0 %}Residual (5%)
+                {% elif c.phase == "residual" %}Residual (gate not met)
+                {% elif c.phase == "expired" %}Expired (5-yr cap)
+                {% else %}Rep Inactive{% endif %}
+              </td>
+              <td><strong style="color:var(--success);">${{ "{:,.2f}".format(c.commission_this_month) }}</strong></td>
             </tr>
             {% else %}
             <tr>
@@ -204,7 +225,7 @@
       <div>
         <div class="k-label">Your Residual Potential</div>
         <div class="k-value">${{ "{:,.0f}".format((clients|sum(attribute='mrr') if clients else 0) * 0.05) }}</div>
-        <div class="k-sub">at 5% residual if all clients reach Month 13+</div>
+        <div class="k-sub">at 5% residual if all clients reach Month 13+ and gate is met</div>
       </div>
       <div>
         <div class="k-label">Your Mission</div>
@@ -258,9 +279,9 @@
       <div class="form-group">
         <label>Target Plan</label>
         <select name="target_plan">
-          <option value="foundation">Foundation — $100/mo</option>
-          <option value="builder" selected>Builder — $400/mo</option>
-          <option value="performance">Performance — $1,000/mo</option>
+          <option value="starter">Starter — $100/mo</option>
+          <option value="growth" selected>Growth — $400/mo</option>
+          <option value="pro">Pro — $1,000/mo</option>
         </select>
       </div>
       <div class="form-group">
