@@ -9,7 +9,8 @@ RUN pip install --no-cache-dir \
     "psycopg-pool>=3.2.0" \
     "jinja2>=3.1.0" \
     "python-multipart>=0.0.9" \
-    "python-dateutil>=2.9.0"
+    "python-dateutil>=2.9.0" \
+    "httpx>=0.27.0"
 
 COPY . .
 
