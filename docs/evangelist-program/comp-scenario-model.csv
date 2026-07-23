@@ -1,0 +1,22 @@
+# GLORi EVANGELIST COMP — ROLLING-BOOK MULTI-YEAR SCENARIO MODEL (Model D LOCKED 2026-07-21). DRAFT / source text for review; not legal or tax advice — confirm with counsel.
+# ASSUMPTIONS (all grounded in COMP-PLAN-MODEL-D.md; no invented figures):
+# Rate: 20% of MRR on an account's months 1-12 (new-account commission); then 5% residual on months 13-60 (years 2-5). Both employed-only; no clawback of paid amounts. 5-year per-account cap.
+# Residual GATE: a rep earns 5% residual in a year ONLY if they produced >=50 new accounts that year (re-qualify annually). Both reps below clear the gate every year (100>=50 and 50>=50), so residual accrues in full each year.
+# Per-account year-1 commission (20% x MRR x 12): Starter $240 / Growth $960 / Pro $2400. Per-account residual per year (5% x MRR x 12): Starter $60 / Growth $240 / Pro $600.
+# Mix: 100/yr rep = 25 Starter / 50 Growth / 25 Pro (exact 25/50/25). 50/yr rep = 13 Starter / 25 Growth / 12 Pro (~25/50/25; Growth held at 50%).
+# Rolling book: rep adds one fresh cohort every year. A cohort pays 20% in its production year and 5% residual in each of the following 4 years; residual stacks as cohorts accumulate. Fully-ramped upper bound (all accounts live a full year; a real ramp lands lower). Assumes full 5-year retention and no attrition.
+# Milestones (one-time, stacking, per rep, year-1 only): $1000 at 10 sites in month 1; $2500 at 25 in 3 months; $10000 at 100 in 12 months = $13500. 100/yr rep is modeled hitting all three (per Model D headline). 50/yr rep at even ~1-per-week pace is modeled hitting none ($0); a front-loaded 50/yr rep could earn up to $3500 (Fast Start + Quarter) but never the $10000 Year bonus. NO base, NO draw (software toggle defaults OFF), NO leader override, NO Senior tier, NO clawbacks.
+# Scope note: Evangelist = paid field rep (cash + residual), distinct from Ambassador (customer referrer, non-cash). Insurance/Financial lines out of scope. Plan is subject to management change at any time.
+Scenario,Year,New Accounts,Account Mix (Starter/Growth/Pro),Gate Met (>=50 new),New-Account 20% Commission,Active Residual Cohorts,Accumulated Residual (5%),Milestone Bonuses,Total Pay (Year),Cumulative Pay
+~100 accounts/yr rep,1,100,25 / 50 / 25,Yes,114000,0,0,13500,127500,127500
+~100 accounts/yr rep,2,100,25 / 50 / 25,Yes,114000,1,28500,0,142500,270000
+~100 accounts/yr rep,3,100,25 / 50 / 25,Yes,114000,2,57000,0,171000,441000
+~100 accounts/yr rep,4,100,25 / 50 / 25,Yes,114000,3,85500,0,199500,640500
+~100 accounts/yr rep,5,100,25 / 50 / 25,Yes,114000,4,114000,0,228000,868500
+~100 accounts/yr rep,5-YR TOTAL,500,25 / 50 / 25 per yr,Yes,570000,,285000,13500,868500,868500
+~50 accounts/yr rep,1,50,13 / 25 / 12,Yes,55920,0,0,0,55920,55920
+~50 accounts/yr rep,2,50,13 / 25 / 12,Yes,55920,1,13980,0,69900,125820
+~50 accounts/yr rep,3,50,13 / 25 / 12,Yes,55920,2,27960,0,83880,209700
+~50 accounts/yr rep,4,50,13 / 25 / 12,Yes,55920,3,41940,0,97860,307560
+~50 accounts/yr rep,5,50,13 / 25 / 12,Yes,55920,4,55920,0,111840,419400
+~50 accounts/yr rep,5-YR TOTAL,250,13 / 25 / 12 per yr,Yes,279600,,139800,0,419400,419400
