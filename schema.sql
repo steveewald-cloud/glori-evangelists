@@ -17,6 +17,14 @@ CREATE TABLE IF NOT EXISTS reps (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Two-track comp model (Model D two-track, 2026-07-23): a rep belongs to
+-- exactly one comp track. 'marketing51' (SMB, existing account-count
+-- residual gate) is the default so every existing rep row backfills
+-- unambiguously; 'quetrex' (enterprise, ARR-gated residual) is opt-in per
+-- rep. No CHECK constraint (kept re-runnable/clean) -- the app enforces the
+-- two allowed values.
+ALTER TABLE reps ADD COLUMN IF NOT EXISTS track TEXT NOT NULL DEFAULT 'marketing51';
+
 CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
     rep_id INTEGER REFERENCES reps(id),

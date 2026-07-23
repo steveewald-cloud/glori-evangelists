@@ -144,13 +144,12 @@
               <th>Clients</th>
               <th>MRR Managed</th>
               <th>Earned MTD</th>
-              <th>New Accounts YTD</th>
+              <th>Gate Progress</th>
               <th>Residual Status</th>
             </tr>
           </thead>
           <tbody>
             {% for r in rep_attainment %}
-            {% set gate_pct = [r.new_accounts_ytd / residual_gate * 100, 100]|min %}
             <tr>
               <td><strong>{{ r.name }}</strong></td>
               <td style="font-size:13px;color:var(--text-muted);">{{ r.territory_region or r.territory_state or "—" }}</td>
@@ -159,13 +158,17 @@
               <td><strong>${{ "{:,.0f}".format(r.earned_this_month) }}</strong></td>
               <td style="min-width:140px;">
                 <div class="progress-wrap" style="height:8px;margin:0 0 4px 0;">
-                  <div class="progress-fill" style="width:{{ gate_pct }}%;"></div>
+                  <div class="progress-fill" style="width:{{ r.gate.pct }}%;"></div>
                 </div>
+                {% if r.gate.track == "quetrex" %}
+                <span style="font-size:12px;color:var(--text-muted);">{{ r.gate.current_display }} / {{ r.gate.qualify_display }} ARR &middot; {{ r.gate.target_display }} target</span>
+                {% else %}
                 <span style="font-size:12px;color:var(--text-muted);">{{ r.new_accounts_ytd }} / {{ residual_gate }} gate &middot; {{ year_target }} target</span>
+                {% endif %}
               </td>
               <td>
-                <span class="badge {{ 'badge-growth' if r.residual_qualified else 'badge-starter' }}">
-                  {{ "Qualified" if r.residual_qualified else "Not Qualified" }}
+                <span class="badge {{ 'badge-growth' if r.gate.qualified else 'badge-starter' }}">
+                  {{ "Qualified" if r.gate.qualified else "Not Qualified" }}
                 </span>
               </td>
             </tr>
@@ -244,10 +247,10 @@
     <form method="post" action="/leadership/clients/add">
       <div class="form-group">
         <label>Assigned Rep</label>
-        <select name="rep_id" required>
+        <select name="rep_id" id="add-client-rep" required onchange="glTogglePlanByTrack(this)">
           <option value="">Select rep...</option>
           {% for r in rep_attainment %}
-          <option value="{{ r.id }}">{{ r.name }}</option>
+          <option value="{{ r.id }}" data-track="{{ r.track or 'marketing51' }}">{{ r.name }}</option>
           {% endfor %}
         </select>
       </div>
@@ -259,13 +262,17 @@
         <label>Contact Email</label>
         <input type="email" name="contact_email" placeholder="owner@example.com" />
       </div>
-      <div class="form-group">
+      <div class="form-group" id="add-client-plan-group">
         <label>Plan</label>
-        <select name="plan" required>
+        <select name="plan" id="add-client-plan">
           <option value="starter">Starter — $100/mo</option>
           <option value="growth" selected>Growth — $400/mo</option>
           <option value="pro">Pro — $1,000/mo</option>
         </select>
+      </div>
+      <div class="form-group" id="add-client-custom-mrr-group" style="display:none;">
+        <label>Custom MRR ($/mo)</label>
+        <input type="number" name="custom_mrr" id="add-client-custom-mrr" min="0" step="0.01" placeholder="e.g. 5000" />
       </div>
       <div class="form-group">
         <label>Subscription Start Date</label>
@@ -281,4 +288,28 @@
     </form>
   </div>
 </div>
+
+<script>
+  // Quetrex/enterprise reps take a custom monthly MRR instead of the SMB
+  // tier dropdown; marketing51 reps keep the existing tier flow unchanged.
+  function glTogglePlanByTrack(select) {
+    var opt = select.options[select.selectedIndex];
+    var track = opt ? opt.getAttribute('data-track') : 'marketing51';
+    var planGroup = document.getElementById('add-client-plan-group');
+    var mrrGroup = document.getElementById('add-client-custom-mrr-group');
+    var planSelect = document.getElementById('add-client-plan');
+    var mrrInput = document.getElementById('add-client-custom-mrr');
+    if (track === 'quetrex') {
+      planGroup.style.display = 'none';
+      mrrGroup.style.display = '';
+      planSelect.disabled = true;
+      mrrInput.required = true;
+    } else {
+      planGroup.style.display = '';
+      mrrGroup.style.display = 'none';
+      planSelect.disabled = false;
+      mrrInput.required = false;
+    }
+  }
+</script>
 {% endblock %}

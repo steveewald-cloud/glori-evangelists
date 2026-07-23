@@ -137,6 +137,39 @@ def test_mid_month_start_recognized_in_start_month():
     assert row_dec["net_commission"] == 0
 
 
+def test_quetrex_residual_gated_by_arr_not_count():
+    # month13 residual client, quetrex track: gate_metric is ARR booked YTD,
+    # not an account count. 249999 -> not qualified -> $0; 250000 -> qualified.
+    client = _client(mrr=400, subscription_start=date(2025, 1, 1))
+    row_under = ledger.compute_ledger_row(client, "active", 249999, date(2026, 1, 1), track="quetrex")
+    row_over = ledger.compute_ledger_row(client, "active", 250000, date(2026, 1, 1), track="quetrex")
+    assert row_under["subscription_month"] == 13
+    assert row_under["commission_type"] == "residual"
+    assert row_under["net_commission"] == Decimal("0")
+    assert row_over["net_commission"] == Decimal("20")  # 5% of 400
+
+
+def test_quetrex_month1_commission_unaffected_by_gate():
+    # Commission phase (months 1-12) is never gated, on either track.
+    client = _client(mrr=1000, subscription_start=date(2026, 1, 1))
+    row = ledger.compute_ledger_row(client, "active", 0, date(2026, 1, 1), track="quetrex")
+    assert row["commission_type"] == "commission"
+    assert row["net_commission"] == Decimal("200")  # 20% of 1000
+
+
+def test_marketing51_track_default_matches_legacy_positional_call():
+    # track defaults to "marketing51" -- confirms the account-count path
+    # (49/50 boundary) is unchanged whether or not track is passed explicitly.
+    client = _client(mrr=400, subscription_start=date(2025, 1, 1))
+    row_legacy = ledger.compute_ledger_row(client, "active", 49, date(2026, 1, 1))
+    row_explicit = ledger.compute_ledger_row(client, "active", 49, date(2026, 1, 1), track="marketing51")
+    assert row_legacy == row_explicit
+    assert row_legacy["net_commission"] == Decimal("0")
+
+    row_qualified = ledger.compute_ledger_row(client, "active", 50, date(2026, 1, 1), track="marketing51")
+    assert row_qualified["net_commission"] == Decimal("20")
+
+
 def test_as_date_coerces_datetime():
     dt = datetime(2026, 3, 4, 12, 30)
     assert ledger._as_date(dt) == date(2026, 3, 4)
@@ -157,6 +190,9 @@ TESTS = [
     test_idempotency_contract_conflict_target,
     test_idempotency_contract_update_columns_exclude_paid_state,
     test_mid_month_start_recognized_in_start_month,
+    test_quetrex_residual_gated_by_arr_not_count,
+    test_quetrex_month1_commission_unaffected_by_gate,
+    test_marketing51_track_default_matches_legacy_positional_call,
     test_as_date_coerces_datetime,
 ]
 

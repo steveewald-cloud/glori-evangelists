@@ -176,6 +176,48 @@ def test_rep_month_summary_basic():
     assert summary_qualified["residual_earned"] == Decimal("50")
 
 
+def test_enterprise_constants():
+    assert c.ENTERPRISE_RESIDUAL_GATE_ARR == 250000
+    assert c.ENTERPRISE_ANNUAL_TARGET_ARR == 500000
+
+
+def test_enterprise_residual_gate_boundary():
+    assert c.is_residual_qualified_enterprise(249999) is False
+    assert c.is_residual_qualified_enterprise(250000) is True
+    # Decimal input works too.
+    assert c.is_residual_qualified_enterprise(Decimal("249999.99")) is False
+    assert c.is_residual_qualified_enterprise(Decimal("250000.00")) is True
+
+
+def test_is_residual_qualified_for_track_routing():
+    # quetrex routes to the ARR gate.
+    assert c.is_residual_qualified_for_track("quetrex", 249999) is False
+    assert c.is_residual_qualified_for_track("quetrex", 250000) is True
+    # marketing51 (and any other/legacy value) routes to the account-count gate.
+    assert c.is_residual_qualified_for_track("marketing51", 49) is False
+    assert c.is_residual_qualified_for_track("marketing51", 50) is True
+
+
+def test_account_commission_math_identical_across_tracks():
+    """account_commission/account_month_commission take a resolved
+    residual_qualified boolean and never branch on track themselves --
+    confirm the math is bit-for-bit identical regardless of which track
+    produced that boolean."""
+    mrr = 400
+    for track in ("marketing51", "quetrex"):
+        metric_qualified = 50 if track == "marketing51" else 250000
+        metric_unqualified = 49 if track == "marketing51" else 249999
+
+        qualified = c.is_residual_qualified_for_track(track, metric_qualified)
+        unqualified = c.is_residual_qualified_for_track(track, metric_unqualified)
+
+        assert c.account_commission(mrr, 1, residual_qualified=qualified) == Decimal("80")
+        assert c.account_commission(mrr, 13, residual_qualified=qualified) == Decimal("20")
+        assert c.account_commission(mrr, 61, residual_qualified=qualified) == Decimal("0")
+
+        assert c.account_commission(mrr, 13, residual_qualified=unqualified) == Decimal("0")
+
+
 def test_calculate_kingdom_giving_and_founders_pool_unchanged():
     pool = c.calculate_founders_pool(Decimal("120000"))
     assert pool == Decimal("120000") * Decimal("0.50") / 12
@@ -207,6 +249,10 @@ TESTS = [
     test_account_month_commission_phase_labels,
     test_account_age_months,
     test_rep_month_summary_basic,
+    test_enterprise_constants,
+    test_enterprise_residual_gate_boundary,
+    test_is_residual_qualified_for_track_routing,
+    test_account_commission_math_identical_across_tracks,
     test_calculate_kingdom_giving_and_founders_pool_unchanged,
 ]
 

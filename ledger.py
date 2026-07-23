@@ -8,7 +8,7 @@ wraps this in the actual fetch + upsert against Postgres.
 """
 from datetime import datetime, date
 
-from commission import account_month_commission, is_residual_qualified
+from commission import account_month_commission, is_residual_qualified_for_track
 
 
 def _as_date(value):
@@ -38,14 +38,27 @@ LEDGER_UPDATE_COLUMNS = [
 ]
 
 
-def compute_ledger_row(client: dict, rep_status: str, new_accounts_ytd: int, ledger_month: date) -> dict:
+def compute_ledger_row(
+    client: dict,
+    rep_status: str,
+    gate_metric: int,
+    ledger_month: date,
+    track: str = "marketing51",
+) -> dict:
     """Pure per-client Model D ledger computation for one ledger_month.
 
     client: dict with at least id, rep_id, mrr, subscription_start,
     is_ambassador_deal.
     rep_status: the client's assigned rep's `status` column value.
-    new_accounts_ytd: count of that rep's new accounts in ledger_month's
-    calendar year (input to is_residual_qualified).
+    gate_metric: the rep's YTD residual-qualification metric for
+    ledger_month's calendar year, interpreted according to `track` --
+    a new-account COUNT for track="marketing51" (the historical
+    new_accounts_ytd), or new-account ARR booked (MRR * 12) for
+    track="quetrex". Resolved to a residual_qualified boolean via
+    commission.is_residual_qualified_for_track.
+    track: the client's rep's comp track ("marketing51" | "quetrex").
+    Defaults to "marketing51" so every pre-existing positional call site
+    and test (gate_metric interpreted as an account count) is unchanged.
     """
     # Calendar-month recognition: the subscription's start month IS month 1,
     # regardless of day-of-month. The ledger runs per calendar month (pinned to
@@ -58,7 +71,7 @@ def compute_ledger_row(client: dict, rep_status: str, new_accounts_ytd: int, led
     start = _as_date(client["subscription_start"])
     account_month = (ledger_month.year - start.year) * 12 + (ledger_month.month - start.month) + 1
     rep_employed = (rep_status == "active")
-    residual_qualified = is_residual_qualified(new_accounts_ytd)
+    residual_qualified = is_residual_qualified_for_track(track, gate_metric)
 
     comp = account_month_commission(
         client["mrr"],

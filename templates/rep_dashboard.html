@@ -22,7 +22,7 @@
     <div class="att-label">Commission Earned This Month</div>
     <div class="att-amount">${{ "{:,.0f}".format(commission_earned) }}</div>
     <div class="att-sub">
-      {% if residual_qualified %}
+      {% if gate.qualified %}
         Residual eligible &mdash; qualified this year
       {% else %}
         Residual not yet qualified this year
@@ -30,12 +30,17 @@
       {% if draw > 0 %}&nbsp;&nbsp;|&nbsp;&nbsp;Draw top-up: ${{ "{:,.0f}".format(draw) }}/mo{% endif %}
     </div>
     <div class="progress-wrap" style="margin-top:14px;">
-      <div class="progress-fill" style="width:{{ [new_accounts_ytd / residual_gate * 100, 100]|min }}%;"></div>
+      <div class="progress-fill" style="width:{{ gate.pct }}%;"></div>
     </div>
     <div style="display:flex;justify-content:space-between;margin-top:6px;font-size:12px;color:rgba(255,255,255,0.5);">
-      <span>0 new accounts</span>
+      <span>0 {{ gate.unit }}</span>
+      {% if gate.track == "quetrex" %}
+      <span style="color:var(--gold);font-weight:700;">{{ gate.current_display }} / {{ gate.qualify_display }} ARR to qualify</span>
+      <span>{{ gate.target_display }} target</span>
+      {% else %}
       <span style="color:var(--gold);font-weight:700;">{{ new_accounts_ytd }} / {{ residual_gate }} for residual gate</span>
       <span>{{ year_target }} target</span>
+      {% endif %}
     </div>
   </div>
 
@@ -51,21 +56,30 @@
       <div class="card-value">${{ "{:,.0f}".format(clients|sum(attribute='mrr') if clients else 0) }}</div>
       <div class="card-sub">your book of business</div>
     </div>
+    {% if gate.track == "quetrex" %}
+    <div class="card">
+      <div class="card-title">ARR Booked YTD</div>
+      <div class="card-value">{{ gate.current_display }}</div>
+      <div class="card-sub">vs {{ gate.qualify_display }} ARR to qualify / {{ gate.target_display }} target</div>
+    </div>
+    {% else %}
     <div class="card">
       <div class="card-title">New Accounts YTD</div>
       <div class="card-value">{{ new_accounts_ytd }}</div>
       <div class="card-sub">vs {{ residual_gate }} residual gate / {{ year_target }} target</div>
     </div>
+    {% endif %}
     <div class="card">
       <div class="card-title">Residual Status</div>
       <div class="card-value" style="font-size:20px;">
-        {{ "Qualified" if residual_qualified else "Not Qualified" }}
+        {{ "Qualified" if gate.qualified else "Not Qualified" }}
       </div>
       <div class="card-sub">5% residual on months 13&ndash;60, re-qualifies annually</div>
     </div>
   </div>
 
-  <!-- Milestone Bonus Progress -->
+  {% if gate.track != "quetrex" %}
+  <!-- Milestone Bonus Progress (marketing51 only — no bonuses on the enterprise/quetrex track) -->
   <div class="section-gap">
     <div class="section-title">Milestone Bonus Progress</div>
     <div class="grid-4">
@@ -91,6 +105,7 @@
       </div>
     </div>
   </div>
+  {% endif %}
 
   <!-- My Clients -->
   <div class="section-gap">
