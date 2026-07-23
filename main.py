@@ -13,6 +13,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request, Depends, HTTPException, Form
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
+from fastapi.encoders import jsonable_encoder
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -580,7 +581,7 @@ async def api_rep_earnings(rep_id: int, user=Depends(require_user)):
     new_accounts_ytd = _new_accounts_ytd(clients)
     residual_qualified = is_residual_qualified(new_accounts_ytd)
 
-    return JSONResponse({
+    return JSONResponse(jsonable_encoder({
         "rep_id": rep_id,
         "rep_name": rep["name"],
         "earned_this_month": earned,
@@ -591,7 +592,7 @@ async def api_rep_earnings(rep_id: int, user=Depends(require_user)):
         "year_target": YEAR_TARGET_ACCOUNTS,
         "draw": float(draw_for(earned)),
         "history": [dict(h) for h in history],
-    })
+    }))
 
 
 @app.get("/health")
