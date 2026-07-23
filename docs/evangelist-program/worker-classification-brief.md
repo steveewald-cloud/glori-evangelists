@@ -3,6 +3,13 @@
 **Status:** DRAFT / source text for review. Prepared for Steve + counsel.
 **Decision owner:** Steve, in consultation with employment counsel and tax advisor. **This brief does not make the call — it frames it.**
 
+> **DECISION (Steve, 2026-07-23): W-2.** All Evangelists are engaged as **W-2 employees**.
+> The applicable paperwork is therefore the **offer-letter / W-2 path** in §5 below (offer
+> letter, IP assignment, at-will + handbook acknowledgment, I-9 / W-4), and the Evangelist
+> Compensation Acknowledgment. Counsel/CPA must still finalize the templates and confirm
+> state-by-state obligations before the first rep signs — this decision selects the path,
+> it does not substitute for legal review. The 1099 analysis below is retained for context.
+
 > **Not legal or tax advice.** This document organizes the trade-offs and the paperwork so counsel can advise. Every template outlined here is a skeleton only and **must be drafted or reviewed by a qualified employment lawyer (and, for tax items, a CPA/tax advisor) before any rep uses it.** Do not treat any statement below as a legal determination about GLORi's entity, its reps, or worker status.
 
 ---
