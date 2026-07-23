@@ -182,3 +182,13 @@ UPDATE prospects
                          ELSE target_plan
                      END
  WHERE target_plan IN ('foundation', 'builder', 'performance');
+
+-- Legacy schema-drift reconciliation for commission_ledger.
+-- The live table predates the schema rewrite; CREATE TABLE IF NOT EXISTS never
+-- reconciles existing columns, so a legacy `commission_rate NUMERIC NOT NULL`
+-- (and legacy `paid_at`) can linger. The Model D ledger writer does not populate
+-- commission_rate, so its NOT NULL constraint breaks every insert. Drop the dead
+-- legacy columns (idempotent) and ensure the current paid_date column exists.
+ALTER TABLE commission_ledger DROP COLUMN IF EXISTS commission_rate;
+ALTER TABLE commission_ledger DROP COLUMN IF EXISTS paid_at;
+ALTER TABLE commission_ledger ADD COLUMN IF NOT EXISTS paid_date DATE;
