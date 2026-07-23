@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Applicants — GLORi Evangelists{% endblock %}
+
+{% block content %}
+<div class="page">
+
+  <div class="page-header">
+    <h1>Evangelist Applicants</h1>
+    <p>Recruiting lead-capture submissions from /join, newest first</p>
+  </div>
+
+  <div class="card">
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Phone</th>
+            <th>Product Interest</th>
+            <th>Source</th>
+            <th>Status</th>
+            <th>Submitted</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for a in applicants %}
+          <tr>
+            <td><strong>{{ a.name }}</strong></td>
+            <td style="font-size:13px;">{{ a.email }}</td>
+            <td style="font-size:13px;">{{ a.phone or "—" }}</td>
+            <td style="font-size:13px;">{{ a.product_interest }}</td>
+            <td style="font-size:13px;color:var(--text-muted);">{{ a.source }}</td>
+            <td>
+              <span class="badge {{ 'badge-live' if a.status == 'new' else 'badge-audit' }}">
+                {{ a.status|title }}
+              </span>
+            </td>
+            <td style="font-size:13px;color:var(--text-muted);">{{ a.created_at }}</td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="7" style="text-align:center;color:var(--text-muted);padding:32px;">
+              No applications yet. Share <a href="/join">/join</a> to start recruiting.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

@@ -85,6 +85,25 @@ def send_dispute_filed_email(admin_email: str, rep_name: str, dispute_type: str,
     return _send(admin_email, f"New commission dispute from {rep_name}", _wrap("Commission Dispute Filed", body))
 
 
+def send_applicant_notification(admin_email: str, name: str, email: str,
+                                  product_interest: str, message: str) -> bool:
+    link = f"{APP_BASE_URL}/leadership/applicants"
+    message_html = (
+        f'<p style="background:#f4f4f4; padding:16px; border-radius:6px;">{message}</p>'
+        if message else ""
+    )
+    body = f"""
+    <p>A new Evangelist application just came in from <strong>{name}</strong> ({email}).</p>
+    <p>Product interest: <strong>{product_interest}</strong></p>
+    {message_html}
+    <p style="text-align:center; margin:32px 0;">
+      <a href="{link}" style="background:{GOLD}; color:{NAVY}; text-decoration:none; font-weight:bold;
+        padding:14px 28px; border-radius:6px; display:inline-block;">Review Applicants</a>
+    </p>
+    """
+    return _send(admin_email, f"New Evangelist application from {name}", _wrap("New Evangelist Application", body))
+
+
 def send_dispute_resolved_email(to_email: str, rep_name: str, status: str, resolution_notes: str) -> bool:
     link = f"{APP_BASE_URL}/rep/disputes"
     pretty_status = {"resolved": "Resolved", "rejected": "Rejected"}.get(status, status.title())

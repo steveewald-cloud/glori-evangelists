@@ -95,6 +95,11 @@ CREATE TABLE IF NOT EXISTS commission_ledger (
 CREATE INDEX IF NOT EXISTS idx_ledger_rep ON commission_ledger(rep_id);
 CREATE INDEX IF NOT EXISTS idx_ledger_month ON commission_ledger(ledger_month);
 
+-- One ledger row per (client, month): the target of the monthly
+-- commission-ledger upsert (db.build_commission_ledger_for_month). Makes
+-- re-running a month idempotent — never duplicates a row.
+CREATE UNIQUE INDEX IF NOT EXISTS uq_ledger_client_month ON commission_ledger(client_id, ledger_month);
+
 CREATE TABLE IF NOT EXISTS onboarding_fees (
     id SERIAL PRIMARY KEY,
     rep_id INTEGER REFERENCES reps(id) NOT NULL,
@@ -140,6 +145,21 @@ CREATE TABLE IF NOT EXISTS commission_disputes (
 );
 CREATE INDEX IF NOT EXISTS idx_disputes_rep ON commission_disputes(rep_id);
 CREATE INDEX IF NOT EXISTS idx_disputes_status ON commission_disputes(status);
+
+-- Recruiting lead-capture intake: public applications from /join/apply,
+-- reviewed by leadership at /leadership/applicants.
+CREATE TABLE IF NOT EXISTS evangelist_applicants (
+    id SERIAL PRIMARY KEY,
+    name TEXT NOT NULL,
+    email TEXT NOT NULL,
+    phone TEXT,
+    product_interest TEXT DEFAULT 'marketing51',
+    message TEXT,
+    source TEXT DEFAULT 'join',
+    status TEXT NOT NULL DEFAULT 'new',
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_applicants_status ON evangelist_applicants(status);
 
 -- Model D tier rename (idempotent data migration): Foundation/Builder/Performance
 -- -> Starter/Growth/Pro. Runs on every startup via db.apply_schema(); self-noops

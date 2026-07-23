@@ -17,6 +17,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 import db
+import emailer
 from commission import (
     account_month_commission,
     is_residual_qualified,
@@ -93,7 +94,35 @@ async def join_page(request: Request):
     standalone landing repo (m51-ambassadors) once it was clear Marketing51 is a
     GLORi product line, not a separate company — so there is one Evangelist
     program on one app. Covers Marketing51 (SMB) + Quetrex/Build.Glori (enterprise)."""
-    return templates.TemplateResponse(request, "join.html", {"request": request})
+    return templates.TemplateResponse(request, "join.html", {
+        "request": request,
+        "applied": request.query_params.get("applied"),
+    })
+
+
+@app.post("/join/apply")
+async def join_apply(
+    request: Request,
+    name: str = Form(...),
+    email: str = Form(...),
+    phone: str = Form(""),
+    product_interest: str = Form("marketing51"),
+    message: str = Form(""),
+):
+    """Public recruiting lead-capture intake — no auth. Insert is the
+    critical path; the leadership notification email is best-effort and
+    must never block or fail the applicant's redirect."""
+    async with db.get_conn() as conn:
+        await db.create_applicant(conn, name, email, phone, product_interest, message, source="join")
+        await conn.commit()
+
+    try:
+        admin_email = os.environ.get("ADMIN_EMAIL", "steve.ewald@glori.com")
+        emailer.send_applicant_notification(admin_email, name, email, product_interest, message)
+    except Exception:
+        pass
+
+    return RedirectResponse(url="/join?applied=1", status_code=303)
 
 
 # ─── Login / Logout ──────────────────────────────────────────────────────────
@@ -390,6 +419,46 @@ async def leadership_dashboard(request: Request, user=Depends(require_leadership
         "all_clients": all_clients,
         "current_month": date.today().strftime("%B %Y"),
         "plan_mrr": PLAN_MRR,
+        "ran": request.query_params.get("ran"),
+        "ran_clients": request.query_params.get("clients"),
+        "run_month_default": date.today().strftime("%Y-%m"),
+    })
+
+
+@app.post("/leadership/commission/run")
+async def run_commission(
+    request: Request,
+    user=Depends(require_leadership),
+    month: str = Form(""),
+):
+    """Money-critical: computes + upserts one commission_ledger row per
+    active client for the given (or current) month. Idempotent — safe to
+    re-run; see db.build_commission_ledger_for_month / ledger.py."""
+    if month:
+        y, m = month.split("-")
+        ledger_month = date(int(y), int(m), 1)
+    else:
+        today = date.today()
+        ledger_month = date(today.year, today.month, 1)
+
+    async with db.get_conn() as conn:
+        summary = await db.build_commission_ledger_for_month(conn, ledger_month)
+        await conn.commit()
+
+    return RedirectResponse(
+        url=f"/leadership?ran={ledger_month.strftime('%Y-%m')}&clients={summary['clients']}",
+        status_code=303,
+    )
+
+
+@app.get("/leadership/applicants", response_class=HTMLResponse)
+async def leadership_applicants(request: Request, user=Depends(require_leadership)):
+    async with db.get_conn() as conn:
+        applicants = await db.get_applicants(conn)
+    return templates.TemplateResponse(request, "applicants.html", {
+        "request": request,
+        "user": user,
+        "applicants": applicants,
     })
 
 
