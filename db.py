@@ -13,6 +13,14 @@ DATABASE_URL = os.environ.get("DATABASE_URL", "")
 
 _pool = None
 
+
+async def _check_conn(conn):
+    """Validate a pooled connection on checkout; raising here makes the pool
+    discard the dead connection and hand out a fresh one. Guards against Neon
+    idle-closed sockets (otherwise the first request after idle 500s)."""
+    await conn.execute("SELECT 1")
+
+
 async def get_pool():
     global _pool
     if _pool is None:
@@ -22,6 +30,15 @@ async def get_pool():
             max_size=10,
             kwargs={"row_factory": dict_row},
             open=False,
+            # Neon (serverless Postgres) closes idle connections / suspends compute,
+            # so a pooled connection can be dead by the next request. Validate each
+            # connection on checkout (dead ones are transparently replaced) and
+            # recycle idle/long-lived ones before Neon kills them — without this the
+            # first request after any idle period 500s ("SSL connection closed").
+            check=_check_conn,
+            max_idle=180,
+            max_lifetime=600,
+            reconnect_timeout=15,
         )
         await _pool.open()
     return _pool
