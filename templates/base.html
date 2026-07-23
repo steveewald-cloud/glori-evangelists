@@ -377,6 +377,7 @@
     {% if user.role in ['admin', 'leadership'] %}
       <a href="/leadership" {% if request.url.path == '/leadership' %}class="active"{% endif %}>Overview</a>
       <a href="/leadership/reps" {% if request.url.path == '/leadership/reps' %}class="active"{% endif %}>Reps</a>
+      <a href="/leadership/applicants" {% if request.url.path == '/leadership/applicants' %}class="active"{% endif %}>Applicants</a>
     {% else %}
       <a href="/rep" {% if request.url.path == '/rep' %}class="active"{% endif %}>My Dashboard</a>
       <a href="/rep/pipeline" {% if request.url.path == '/rep/pipeline' %}class="active"{% endif %}>Pipeline</a>

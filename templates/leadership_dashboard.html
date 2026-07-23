@@ -4,10 +4,27 @@
 {% block content %}
 <div class="page">
 
-  <div class="page-header">
-    <h1>Business Intelligence</h1>
-    <p class="g-to-G">g to G &mdash; {{ current_month }}</p>
+  <div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between;gap:20px;flex-wrap:wrap;">
+    <div>
+      <h1>Business Intelligence</h1>
+      <p class="g-to-G">g to G &mdash; {{ current_month }}</p>
+    </div>
+    <form method="post" action="/leadership/commission/run" style="display:flex;align-items:flex-end;gap:10px;">
+      <div class="form-group" style="margin-bottom:0;">
+        <label>Run commission for</label>
+        <input type="month" name="month" value="{{ run_month_default }}" />
+      </div>
+      <button type="submit" class="btn btn-gold">Run Commission</button>
+    </form>
   </div>
+
+  {% if ran %}
+  <div class="card" style="background:#E8F5E9;border-color:#2E7D52;margin-bottom:20px;">
+    <div style="color:#1B5E20;font-weight:600;">
+      Commission run for {{ ran }}: {{ ran_clients }} clients processed.
+    </div>
+  </div>
+  {% endif %}
 
   <!-- Kingdom Impact Banner -->
   <div class="kingdom-banner">

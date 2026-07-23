@@ -7,6 +7,8 @@ from psycopg.rows import dict_row
 from psycopg_pool import AsyncConnectionPool
 from contextlib import asynccontextmanager
 
+import ledger
+
 DATABASE_URL = os.environ.get("DATABASE_URL", "")
 
 _pool = None
@@ -118,6 +120,84 @@ async def get_rep_commission_this_month(conn, rep_id: int):
         (rep_id,)
     )
     return await result.fetchone()
+
+# Column list is INSERT order; the ON CONFLICT DO UPDATE SET clause is
+# built from ledger.LEDGER_UPDATE_COLUMNS so the SQL and the (unit-tested,
+# DB-free) idempotency contract in ledger.py can never drift apart.
+_LEDGER_INSERT_COLUMNS = [
+    "rep_id", "client_id", "ledger_month", "subscription_month",
+    "commission_type", "mrr", "commission_amount", "ambassador_deduction",
+    "net_commission",
+]
+_LEDGER_SET_CLAUSE = ", ".join(
+    f"{col}=EXCLUDED.{col}" for col in ledger.LEDGER_UPDATE_COLUMNS
+)
+_LEDGER_UPSERT_SQL = f"""
+    INSERT INTO commission_ledger ({", ".join(_LEDGER_INSERT_COLUMNS)})
+    VALUES ({", ".join(["%s"] * len(_LEDGER_INSERT_COLUMNS))})
+    ON CONFLICT ({", ".join(ledger.LEDGER_CONFLICT_TARGET)}) DO UPDATE SET
+      {_LEDGER_SET_CLAUSE}
+    WHERE commission_ledger.paid = false
+"""
+
+
+async def build_commission_ledger_for_month(conn, ledger_month):
+    """Compute + upsert one commission_ledger row per active client for
+    ledger_month (a first-of-month date). Idempotent: safe to re-run — a
+    paid row is left completely untouched (paid/paid_date/created_at are
+    never in the SET list, and the DO UPDATE only fires WHERE paid=false).
+    Does NOT commit — caller commits (matches add_client/add_rep)."""
+    clients_result = await conn.execute(
+        """SELECT c.id, c.rep_id, c.mrr, c.subscription_start,
+           c.is_ambassador_deal, r.status AS rep_status
+           FROM clients c JOIN reps r ON r.id = c.rep_id
+           WHERE c.status = 'active'"""
+    )
+    clients = await clients_result.fetchall()
+
+    ytd_result = await conn.execute(
+        """SELECT rep_id, COUNT(*) AS cnt FROM clients
+           WHERE status = 'active' AND EXTRACT(YEAR FROM subscription_start) = %s
+           GROUP BY rep_id""",
+        (ledger_month.year,),
+    )
+    ytd_rows = await ytd_result.fetchall()
+    ytd_counts = {row["rep_id"]: row["cnt"] for row in ytd_rows}
+
+    paid_result = await conn.execute(
+        """SELECT client_id FROM commission_ledger
+           WHERE ledger_month = %s AND paid = true""",
+        (ledger_month,),
+    )
+    paid_rows = await paid_result.fetchall()
+    paid_client_ids = {row["client_id"] for row in paid_rows}
+
+    gross_total = 0
+    net_total = 0
+    paid_skipped = 0
+
+    for client in clients:
+        row = ledger.compute_ledger_row(
+            client, client["rep_status"], ytd_counts.get(client["rep_id"], 0), ledger_month
+        )
+        if client["id"] in paid_client_ids:
+            paid_skipped += 1
+
+        await conn.execute(
+            _LEDGER_UPSERT_SQL,
+            tuple(row[col] for col in _LEDGER_INSERT_COLUMNS),
+        )
+        gross_total += float(row["commission_amount"])
+        net_total += float(row["net_commission"])
+
+    return {
+        "ledger_month": ledger_month.isoformat(),
+        "clients": len(clients),
+        "paid_skipped": paid_skipped,
+        "gross_total": gross_total,
+        "net_total": net_total,
+    }
+
 
 async def get_all_clients(conn):
     result = await conn.execute(
@@ -291,3 +371,22 @@ async def resolve_dispute(conn, dispute_id: int, status: str,
            WHERE id = %s""",
         (status, resolution_notes, resolved_by, dispute_id)
     )
+
+# ─── Recruiting lead-capture intake ───────────────────────────────────────────
+
+async def create_applicant(conn, name: str, email: str, phone: str,
+                            product_interest: str, message: str, source: str = "join"):
+    result = await conn.execute(
+        """INSERT INTO evangelist_applicants
+           (name, email, phone, product_interest, message, source)
+           VALUES (%s,%s,%s,%s,%s,%s) RETURNING id""",
+        (name, email, phone, product_interest, message, source)
+    )
+    row = await result.fetchone()
+    return row["id"]
+
+async def get_applicants(conn):
+    result = await conn.execute(
+        "SELECT * FROM evangelist_applicants ORDER BY created_at DESC"
+    )
+    return await result.fetchall()
