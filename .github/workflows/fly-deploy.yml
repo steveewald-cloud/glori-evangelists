@@ -1,9 +1,0 @@
-# This workflow is disabled - deploy.yml is the active workflow
-name: Deploy to Fly.io (disabled)
-
-on:
-  workflow_dispatch:
-    inputs:
-      disabled:
-        description: 'This workflow is disabled. Use deploy.yml instead.'
-        required: false
