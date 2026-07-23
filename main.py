@@ -690,8 +690,11 @@ async def api_rep_earnings(rep_id: int, user=Depends(require_user)):
         "new_accounts_ytd": new_accounts_ytd,
         "arr_booked_ytd": float(arr_booked_ytd),
         "residual_qualified": residual_qualified,
-        "residual_gate": RESIDUAL_GATE_ACCOUNTS,
-        "year_target": YEAR_TARGET_ACCOUNTS,
+        # Track-aware gate/target (accounts for marketing51, ARR $ for quetrex)
+        # so the flat fields match the rep's actual gate; the raw M51/enterprise
+        # constants remain available below for consumers that want both.
+        "residual_gate": gate["qualify_threshold"],
+        "year_target": gate["target"],
         "enterprise_residual_gate_arr": ENTERPRISE_RESIDUAL_GATE_ARR,
         "enterprise_annual_target_arr": ENTERPRISE_ANNUAL_TARGET_ARR,
         "gate": gate,
