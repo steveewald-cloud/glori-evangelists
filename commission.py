@@ -1,133 +1,285 @@
 """
-GLORi Evangelists Commission Engine
-Full logic for all compensation tiers, ramp/steady state, upsells, ambassador deals.
+GLORi Evangelists Commission Engine — Model D
+
+Single flat comp plan (COMP-PLAN-MODEL-D.md, locked 2026-07-21):
+  - Commission: 20% of MRR for an account's months 1-12. Pure commission,
+    no base, no draw dependency.
+  - Residual: 5% of MRR for an account's months 13-60 (years 2-5). Hard
+    5-year per-account cap (month > 60 -> $0).
+  - Both commission and residual are employed-only: they stop the day the
+    rep leaves. No clawback of already-paid amounts.
+  - Residual qualification gate (annual, re-qualify): a rep earns the 5%
+    residual in a given year only if they produced >= 50 new accounts that
+    year. Commission (months 1-12) is never gated.
+  - Stacking, one-time milestone bonuses: Fast start $1,000 @ 10 sites in
+    month 1; Quarter $2,500 @ 25 sites in 3 months; Year $10,000 @ 100
+    sites in 12 months. All three = $13,500.
+  - Tiers: Starter $100 / Growth $400 / Pro $1,000.
+
+Kept unchanged: the $250 ambassador deduction (legal boundary — do not
+rename ambassador_* identifiers), the $300 onboarding fee ($150 to rep),
+the 10% Kingdom giving + reserve/founders-pool logic, and the configurable
+draw toggle (DRAW_ENABLED, default OFF).
 """
 import os
 from decimal import Decimal
 from datetime import date
-from dateutil.relativedelta import relativedelta
 
 
 def _env_bool(name: str, default: bool = False) -> bool:
     return os.environ.get(name, str(default)).strip().lower() in ("1", "true", "yes", "on")
 
 
+# --- Tiers -------------------------------------------------------------
 PLAN_MRR = {
-    "foundation": 100,
-    "builder": 400,
-    "performance": 1000,
+    "starter": 100,
+    "growth": 400,
+    "pro": 1000,
 }
 
+# --- Onboarding ----------------------------------------------------------
 ONBOARDING_FEE = 300
 REP_ONBOARDING = 150
 COMPANY_ONBOARDING = 150
 
-RAMP_MONTH1_RATE = Decimal("0.55")
-STEADY_MONTH1_RATE = Decimal("0.20")
-MONTHS_2_6_RATE = Decimal("0.20")
-MONTHS_7_12_RATE = Decimal("0.10")
-RESIDUAL_RATE = Decimal("0.05")
+# --- Model D rate/phase constants ----------------------------------------
+COMMISSION_RATE = Decimal("0.20")      # months 1-12
+RESIDUAL_RATE = Decimal("0.05")        # months 13-60
+COMMISSION_MONTHS = 12
+RESIDUAL_END_MONTH = 60                # 5-year per-account cap
 
-RAMP_THRESHOLD = Decimal("5000.00")
+RESIDUAL_GATE_ACCOUNTS = 50            # >= 50 new accounts/yr to earn residual
+YEAR_TARGET_ACCOUNTS = 100             # stretch target / Year bonus threshold
 
-# --- Ramp draw (configurable) ---------------------------------------------
-# A draw is a guaranteed monthly floor for a rep still ramping (earnings under
-# RAMP_THRESHOLD). It is a company-cost setting we turn ON or OFF, and it is
-# ALWAYS **non-recoverable** — never repaid, never clawed back from future
-# commission. It is a floor top-up, not a loan.
-#
-# Default OFF. New reps carry skin in the game: income depends on selling.
-# Turn it on per-cohort/season by setting DRAW_ENABLED=true (and optionally
-# DRAW_AMOUNT) in the environment; no code change or redeploy of logic needed.
-DRAW_ENABLED = _env_bool("DRAW_ENABLED", False)
-DRAW_AMOUNT = Decimal(os.environ.get("DRAW_AMOUNT", "1500.00"))
+# --- Stacking, one-time milestone bonuses ---------------------------------
+FAST_START_BONUS = 1000                # >= 10 new sites in month 1
+QUARTER_BONUS = 2500                   # >= 25 new sites in 3 months
+YEAR_BONUS = 10000                     # >= 100 new sites in 12 months
 
+# --- Ambassador deduction (legal boundary — do not rename) ----------------
 AMBASSADOR_DEDUCTION = Decimal("250.00")
 
-
-def draw_for(is_ramp: bool, earned: Decimal | float) -> Decimal:
-    """Non-recoverable ramp-draw top-up. Zero unless the draw is enabled AND the
-    rep is ramping AND still under the threshold."""
-    if DRAW_ENABLED and is_ramp and Decimal(str(earned)) < RAMP_THRESHOLD:
-        return DRAW_AMOUNT
-    return Decimal("0")
-
+# --- Kingdom giving / reserve / founders pool (unchanged) -----------------
 KINGDOM_GIVING_RATE = Decimal("0.10")
 RESERVE_TARGET = Decimal("10000.00")
 RESERVE_RATE = Decimal("0.10")
 
+# --- Draw (configurable, default OFF; infrastructure retained) -----------
+# A draw is a guaranteed, non-recoverable monthly floor top-up. Default OFF
+# per Model D section 1 — new reps carry skin in the game, income depends
+# on selling. Turn it on with DRAW_ENABLED=true (optionally DRAW_AMOUNT) in
+# the environment; no code change required.
+DRAW_ENABLED = _env_bool("DRAW_ENABLED", False)
+DRAW_AMOUNT = Decimal(os.environ.get("DRAW_AMOUNT", "1500.00"))
 
-def get_subscription_month(subscription_start: date, ledger_month: date) -> int:
-    """Return which month of the subscription this ledger_month represents (1-based)."""
-    delta = relativedelta(ledger_month, subscription_start)
-    return delta.years * 12 + delta.months + 1
+
+def draw_for(earned: "Decimal | float") -> Decimal:
+    """Non-recoverable floor top-up. Zero unless DRAW_ENABLED and earned is
+    still under DRAW_AMOUNT. Decoupled from any ramp/quota latch."""
+    earned_d = earned if isinstance(earned, Decimal) else Decimal(str(earned))
+    if DRAW_ENABLED and earned_d < DRAW_AMOUNT:
+        return DRAW_AMOUNT - earned_d
+    return Decimal("0")
 
 
-def get_commission_tier(sub_month: int) -> tuple[Decimal, str]:
-    """Return (rate, tier_name) for a given subscription month. Excludes month 1 logic (ramp vs steady handled separately)."""
-    if sub_month == 1:
-        return STEADY_MONTH1_RATE, "month1"
-    elif 2 <= sub_month <= 6:
-        return MONTHS_2_6_RATE, "months2_6"
-    elif 7 <= sub_month <= 12:
-        return MONTHS_7_12_RATE, "months7_12"
+def account_age_months(subscription_start: date, as_of: date) -> int:
+    """1-based account month, mirroring the SQL AGE()+1 used in db.py.
+
+    Pure-stdlib calendar-month diff (no python-dateutil dependency): counts
+    completed calendar months between subscription_start and as_of, rolling
+    back one month if as_of's day-of-month hasn't yet reached
+    subscription_start's day-of-month (matches dateutil.relativedelta's
+    `.months` field for this comparison)."""
+    months = (as_of.year - subscription_start.year) * 12 + (
+        as_of.month - subscription_start.month
+    )
+    if as_of.day < subscription_start.day:
+        months -= 1
+    return months + 1
+
+
+def account_commission(
+    mrr,
+    account_month: int,
+    rep_employed: bool = True,
+    residual_qualified: bool = True,
+) -> Decimal:
+    """Core primitive. 0 if not employed; 20% of MRR for months 1-12;
+    5% of MRR for months 13-60 only if residual_qualified; 0 otherwise
+    (including month > 60, the 5-year cap)."""
+    if not rep_employed:
+        return Decimal("0")
+
+    mrr_d = mrr if isinstance(mrr, Decimal) else Decimal(str(mrr))
+
+    if 1 <= account_month <= COMMISSION_MONTHS:
+        return mrr_d * COMMISSION_RATE
+    if COMMISSION_MONTHS < account_month <= RESIDUAL_END_MONTH:
+        if residual_qualified:
+            return mrr_d * RESIDUAL_RATE
+        return Decimal("0")
+    return Decimal("0")
+
+
+def account_month_commission(
+    mrr,
+    account_month: int,
+    is_ambassador_deal: bool = False,
+    rep_employed: bool = True,
+    residual_qualified: bool = True,
+) -> dict:
+    """Display/ledger breakdown for a single account-month.
+
+    phase in {"commission", "residual", "expired", "unemployed"}. The
+    ambassador $250 deduction applies only on account_month == 1;
+    net = max(gross - deduction, 0).
+    """
+    mrr_d = mrr if isinstance(mrr, Decimal) else Decimal(str(mrr))
+
+    if not rep_employed:
+        rate = Decimal("0")
+        phase = "unemployed"
+    elif 1 <= account_month <= COMMISSION_MONTHS:
+        rate = COMMISSION_RATE
+        phase = "commission"
+    elif COMMISSION_MONTHS < account_month <= RESIDUAL_END_MONTH:
+        phase = "residual"
+        rate = RESIDUAL_RATE if residual_qualified else Decimal("0")
     else:
-        return RESIDUAL_RATE, "residual"
+        rate = Decimal("0")
+        phase = "expired"
 
+    gross = mrr_d * rate
+    ambassador_deduction = (
+        AMBASSADOR_DEDUCTION if (is_ambassador_deal and account_month == 1) else Decimal("0")
+    )
+    net = max(gross - ambassador_deduction, Decimal("0"))
 
-def calculate_month1_commission(
-    mrr: int,
-    is_ramp: bool,
-    is_ambassador_deal: bool,
-) -> dict:
-    """Calculate Month 1 commission with ramp/steady and ambassador deduction."""
-    rate = RAMP_MONTH1_RATE if is_ramp else STEADY_MONTH1_RATE
-    gross = Decimal(mrr) * rate
-    ambassador_deduct = AMBASSADOR_DEDUCTION if is_ambassador_deal else Decimal("0")
-    net = max(gross - ambassador_deduct, Decimal("0"))
     return {
-        "rate": float(rate),
-        "gross_commission": float(gross),
-        "ambassador_deduction": float(ambassador_deduct),
-        "net_commission": float(net),
-        "commission_type": "month1",
-        "is_ramp": is_ramp,
+        "rate": rate,
+        "phase": phase,
+        "gross": gross,
+        "ambassador_deduction": ambassador_deduction,
+        "net": net,
+        "account_month": account_month,
     }
 
 
-def calculate_recurring_commission(
-    mrr: int,
-    sub_month: int,
-) -> dict:
-    """Calculate recurring commission for months 2+."""
-    rate, tier = get_commission_tier(sub_month)
-    amount = Decimal(mrr) * rate
+def account_year1_commission(mrr) -> Decimal:
+    """mrr * 20% * 12 -> Starter 240 / Growth 960 / Pro 2400."""
+    mrr_d = mrr if isinstance(mrr, Decimal) else Decimal(str(mrr))
+    return mrr_d * COMMISSION_RATE * 12
+
+
+def account_residual_year(mrr) -> Decimal:
+    """mrr * 5% * 12 -> Starter 60 / Growth 240 / Pro 600. One residual
+    year per account."""
+    mrr_d = mrr if isinstance(mrr, Decimal) else Decimal(str(mrr))
+    return mrr_d * RESIDUAL_RATE * 12
+
+
+def account_lifetime(mrr) -> Decimal:
+    """year1 + 4 * residual_year -> Starter 480 / Growth 1920 / Pro 4800.
+    5-year lifetime per retained account."""
+    return account_year1_commission(mrr) + 4 * account_residual_year(mrr)
+
+
+def is_residual_qualified(new_accounts_ytd: int) -> bool:
+    """Residual qualification gate: new_accounts_ytd >= 50. Annual,
+    re-qualify each year."""
+    return new_accounts_ytd >= RESIDUAL_GATE_ACCOUNTS
+
+
+def milestone_bonuses(sites_month1: int, sites_quarter: int, sites_year: int) -> dict:
+    """Stacking, one-time bonuses. Fast start $1,000 (>= 10 sites mo1),
+    Quarter $2,500 (>= 25 in 3mo), Year $10,000 (>= 100 in 12mo). All
+    three = 13,500."""
+    fast_start_earned = sites_month1 >= 10
+    quarter_earned = sites_quarter >= 25
+    year_earned = sites_year >= YEAR_TARGET_ACCOUNTS
+
+    fast_start_amount = FAST_START_BONUS if fast_start_earned else 0
+    quarter_amount = QUARTER_BONUS if quarter_earned else 0
+    year_amount = YEAR_BONUS if year_earned else 0
+
     return {
-        "rate": float(rate),
-        "commission_amount": float(amount),
-        "net_commission": float(amount),
-        "commission_type": tier,
-        "subscription_month": sub_month,
+        "fast_start_earned": fast_start_earned,
+        "fast_start_amount": fast_start_amount,
+        "quarter_earned": quarter_earned,
+        "quarter_amount": quarter_amount,
+        "year_earned": year_earned,
+        "year_amount": year_amount,
+        "total": fast_start_amount + quarter_amount + year_amount,
     }
 
 
-def calculate_upsell_bonus(new_mrr: int, is_ramp: bool) -> dict:
-    """Calculate one-time upsell bonus when client upgrades plans."""
-    rate = RAMP_MONTH1_RATE if is_ramp else STEADY_MONTH1_RATE
-    bonus = Decimal(new_mrr) * rate
+def rep_month_summary(clients: list, new_accounts_ytd: int = 0, rep_employed: bool = True) -> dict:
+    """Aggregates a rep's month.
+
+    clients: list of dicts, each with at least {mrr, account_month} and
+    optionally {is_ambassador_deal, is_new}. is_new defaults to
+    account_month == 1 (i.e. the account's very first ledger month).
+
+    $150 onboarding per new account; per-account commission/residual via
+    account_commission with residual_qualified = is_residual_qualified
+    (new_accounts_ytd); plus draw_for(total).
+    """
+    residual_qualified = is_residual_qualified(new_accounts_ytd)
+
+    commission_earned = Decimal("0")
+    residual_earned = Decimal("0")
+    new_commission_earned = Decimal("0")
+    onboarding_total = Decimal("0")
+    breakdown = []
+
+    for c in clients:
+        mrr = c["mrr"]
+        account_month = c["account_month"]
+        is_ambassador_deal = c.get("is_ambassador_deal", False)
+        is_new = c.get("is_new", account_month == 1)
+
+        detail = account_month_commission(
+            mrr,
+            account_month,
+            is_ambassador_deal=is_ambassador_deal,
+            rep_employed=rep_employed,
+            residual_qualified=residual_qualified,
+        )
+        net = detail["net"]
+
+        onboarding = Decimal("0")
+        if is_new:
+            onboarding = Decimal(str(REP_ONBOARDING))
+            onboarding_total += onboarding
+
+        if detail["phase"] == "commission":
+            commission_earned += net
+            if is_new:
+                new_commission_earned += net
+        elif detail["phase"] == "residual":
+            residual_earned += net
+
+        breakdown.append({
+            **detail,
+            "mrr": mrr,
+            "is_new": is_new,
+            "onboarding": onboarding,
+        })
+
+    total = commission_earned + residual_earned + onboarding_total
+    draw = draw_for(total)
+    total_earnings = total + draw
+
     return {
-        "rate": float(rate),
-        "bonus_amount": float(bonus),
-        "commission_type": "upsell_bonus",
-        "is_ramp": is_ramp,
+        "commission_earned": commission_earned,
+        "residual_earned": residual_earned,
+        "new_commission_earned": new_commission_earned,
+        "onboarding_total": onboarding_total,
+        "draw": draw,
+        "total_earnings": total_earnings,
+        "residual_qualified": residual_qualified,
+        "breakdown": breakdown,
     }
-
-
-def should_restart_reset(paused_at: date, restart_date: date) -> bool:
-    """Returns True if pause > 6 months and commission clock resets."""
-    delta = relativedelta(restart_date, paused_at)
-    months_paused = delta.years * 12 + delta.months
-    return months_paused >= 6
 
 
 def calculate_kingdom_giving(
@@ -137,7 +289,8 @@ def calculate_kingdom_giving(
     operating_costs: Decimal,
     current_reserve: Decimal,
 ) -> dict:
-    """Calculate both giving layers and reserve for a given month."""
+    """Calculate both giving layers and reserve for a given month.
+    UNCHANGED from the prior engine."""
     giving_layer1 = gross_mrr * KINGDOM_GIVING_RATE
 
     net_remainder = gross_mrr - giving_layer1 - founders_pool - rep_commissions - operating_costs
@@ -177,6 +330,7 @@ def calculate_founders_pool(annual_gross_mrr: Decimal) -> Decimal:
     Founders pool calculated on marginal ARR brackets.
     50% on first $250K ARR, stepping down as revenue scales.
     This is a simplified approximation - actual brackets defined in operating agreement.
+    UNCHANGED from the prior engine.
     """
     arr = annual_gross_mrr
     pool = Decimal("0")
@@ -190,46 +344,3 @@ def calculate_founders_pool(annual_gross_mrr: Decimal) -> Decimal:
         pool = Decimal("375000") + (arr - 1000000) * Decimal("0.20")
     # Return monthly pool
     return pool / 12
-
-
-def estimate_rep_monthly_earnings(
-    active_clients: list[dict],
-    new_clients_this_month: list[dict],
-    is_ramp: bool,
-) -> dict:
-    """
-    Estimate total rep earnings for a given month.
-    active_clients: list of {mrr, sub_month, is_ambassador_deal}
-    new_clients_this_month: list of {mrr, is_ambassador_deal}
-    """
-    total = Decimal("0")
-    breakdown = []
-
-    # Onboarding fees for new clients
-    for c in new_clients_this_month:
-        total += Decimal(str(REP_ONBOARDING))
-        breakdown.append({"type": "onboarding", "amount": REP_ONBOARDING, "client_mrr": c["mrr"]})
-
-        # Month 1
-        m1 = calculate_month1_commission(c["mrr"], is_ramp, c.get("is_ambassador_deal", False))
-        total += Decimal(str(m1["net_commission"]))
-        breakdown.append({"type": "month1", "amount": m1["net_commission"], "client_mrr": c["mrr"]})
-
-    # Recurring for existing clients
-    for c in active_clients:
-        rec = calculate_recurring_commission(c["mrr"], c["sub_month"])
-        total += Decimal(str(rec["net_commission"]))
-        breakdown.append({"type": rec["commission_type"], "amount": rec["net_commission"], "client_mrr": c["mrr"]})
-
-    draw = draw_for(is_ramp, total)
-    total_with_draw = total + draw
-
-    return {
-        "commission_total": float(total),
-        "draw": float(draw),
-        "total_earnings": float(total_with_draw),
-        "attainment_pct": float(min(total / RAMP_THRESHOLD * 100, 100)),
-        "ramp_threshold": float(RAMP_THRESHOLD),
-        "is_ramp": is_ramp,
-        "breakdown": breakdown,
-    }

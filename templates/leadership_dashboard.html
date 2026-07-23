@@ -56,8 +56,8 @@
   <div class="section-gap">
     <div class="section-title">Revenue by Plan Tier</div>
     <div class="grid-3">
-      {% set plan_colors = {"foundation": "badge-foundation", "builder": "badge-builder", "performance": "badge-performance"} %}
-      {% set plan_names = {"foundation": "Foundation — $100/mo", "builder": "Builder — $400/mo", "performance": "Performance — $1,000/mo"} %}
+      {% set plan_colors = {"starter": "badge-starter", "growth": "badge-growth", "pro": "badge-pro"} %}
+      {% set plan_names = {"starter": "Starter — $100/mo", "growth": "Growth — $400/mo", "pro": "Pro — $1,000/mo"} %}
       {% for row in mrr_by_plan %}
       <div class="card">
         <div class="card-title">{{ plan_names.get(row.plan, row.plan) }}</div>
@@ -124,39 +124,37 @@
             <tr>
               <th>Rep</th>
               <th>Territory</th>
-              <th>Status</th>
               <th>Clients</th>
               <th>MRR Managed</th>
               <th>Earned MTD</th>
-              <th>Quota</th>
-              <th>Attainment</th>
+              <th>New Accounts YTD</th>
+              <th>Residual Status</th>
             </tr>
           </thead>
           <tbody>
             {% for r in rep_attainment %}
-            {% set attainment_pct = [r.earned_this_month / r.mrr_target * 100, 100]|min %}
+            {% set gate_pct = [r.new_accounts_ytd / residual_gate * 100, 100]|min %}
             <tr>
               <td><strong>{{ r.name }}</strong></td>
               <td style="font-size:13px;color:var(--text-muted);">{{ r.territory_region or r.territory_state or "—" }}</td>
-              <td>
-                <span class="badge {{ 'badge-ramp' if r.is_ramp else 'badge-steady' }}">
-                  {{ "Ramp" if r.is_ramp else "Steady" }}
-                </span>
-              </td>
               <td>{{ r.active_clients }}</td>
               <td>${{ "{:,.0f}".format(r.total_mrr_managed) }}</td>
               <td><strong>${{ "{:,.0f}".format(r.earned_this_month) }}</strong></td>
-              <td style="color:var(--text-muted);">${{ "{:,.0f}".format(r.mrr_target) }}</td>
               <td style="min-width:140px;">
                 <div class="progress-wrap" style="height:8px;margin:0 0 4px 0;">
-                  <div class="progress-fill" style="width:{{ attainment_pct }}%;"></div>
+                  <div class="progress-fill" style="width:{{ gate_pct }}%;"></div>
                 </div>
-                <span style="font-size:12px;color:var(--text-muted);">{{ "{:.0f}".format(attainment_pct) }}%</span>
+                <span style="font-size:12px;color:var(--text-muted);">{{ r.new_accounts_ytd }} / {{ residual_gate }} gate &middot; {{ year_target }} target</span>
+              </td>
+              <td>
+                <span class="badge {{ 'badge-growth' if r.residual_qualified else 'badge-starter' }}">
+                  {{ "Qualified" if r.residual_qualified else "Not Qualified" }}
+                </span>
               </td>
             </tr>
             {% else %}
             <tr>
-              <td colspan="8" style="text-align:center;color:var(--text-muted);padding:24px;">
+              <td colspan="7" style="text-align:center;color:var(--text-muted);padding:24px;">
                 No reps yet. <a href="/leadership/reps">Add the first GLORi Evangelist.</a>
               </td>
             </tr>
@@ -190,14 +188,12 @@
           <tbody>
             {% for c in all_clients %}
             {% set sub_month = c.subscription_month|int %}
-            {% if sub_month == 1 %}
-              {% set tier = "Month 1" %}
-            {% elif sub_month <= 6 %}
-              {% set tier = "Months 2–6 (20%)" %}
-            {% elif sub_month <= 12 %}
-              {% set tier = "Months 7–12 (10%)" %}
-            {% else %}
+            {% if sub_month <= 12 %}
+              {% set tier = "Commission (20%)" %}
+            {% elif sub_month <= 60 %}
               {% set tier = "Residual (5%)" %}
+            {% else %}
+              {% set tier = "Expired (5-yr cap)" %}
             {% endif %}
             <tr>
               <td><strong>{{ c.business_name }}</strong></td>
@@ -249,9 +245,9 @@
       <div class="form-group">
         <label>Plan</label>
         <select name="plan" required>
-          <option value="foundation">Foundation — $100/mo</option>
-          <option value="builder" selected>Builder — $400/mo</option>
-          <option value="performance">Performance — $1,000/mo</option>
+          <option value="starter">Starter — $100/mo</option>
+          <option value="growth" selected>Growth — $400/mo</option>
+          <option value="pro">Pro — $1,000/mo</option>
         </select>
       </div>
       <div class="form-group">
