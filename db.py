@@ -233,10 +233,15 @@ async def get_all_prospects(conn):
 # ─── Leadership / dashboard queries ──────────────────────────────────────────
 
 async def get_rep_commission_history(conn, rep_id: int):
+    # Monthly summary: one row per ledger month with the client count and the
+    # total net commission. The rep dashboard's history table renders
+    # client_count + total_commission per month.
     result = await conn.execute(
-        """SELECT id, ledger_month, subscription_month, commission_type, mrr,
-           commission_amount, ambassador_deduction, net_commission, paid
+        """SELECT ledger_month,
+                  COUNT(*) AS client_count,
+                  COALESCE(SUM(net_commission), 0) AS total_commission
            FROM commission_ledger WHERE rep_id = %s
+           GROUP BY ledger_month
            ORDER BY ledger_month DESC LIMIT 24""",
         (rep_id,),
     )
