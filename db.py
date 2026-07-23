@@ -90,10 +90,9 @@ async def get_rep_by_id(conn, rep_id: int):
 async def get_rep_clients(conn, rep_id: int):
     result = await conn.execute(
         """SELECT c.*,
-           CAST(
-             EXTRACT(YEAR FROM AGE(CURRENT_DATE, c.subscription_start)) * 12 +
-             EXTRACT(MONTH FROM AGE(CURRENT_DATE, c.subscription_start)) + 1
-           AS INTEGER) AS subscription_month
+           ((EXTRACT(YEAR FROM CURRENT_DATE) - EXTRACT(YEAR FROM c.subscription_start)) * 12
+            + (EXTRACT(MONTH FROM CURRENT_DATE) - EXTRACT(MONTH FROM c.subscription_start)) + 1)::int
+           AS subscription_month
            FROM clients c
            WHERE c.rep_id = %s AND c.status = 'active'
            ORDER BY c.subscription_start""",
@@ -293,7 +292,11 @@ async def get_rep_attainment_summary(conn):
 
 async def get_all_clients_with_reps(conn):
     result = await conn.execute(
-        """SELECT c.*, r.name AS rep_name FROM clients c
+        """SELECT c.*, r.name AS rep_name,
+           ((EXTRACT(YEAR FROM CURRENT_DATE) - EXTRACT(YEAR FROM c.subscription_start)) * 12
+            + (EXTRACT(MONTH FROM CURRENT_DATE) - EXTRACT(MONTH FROM c.subscription_start)) + 1)::int
+           AS subscription_month
+           FROM clients c
            LEFT JOIN reps r ON r.id = c.rep_id
            WHERE c.status = 'active' ORDER BY c.subscription_start DESC"""
     )
