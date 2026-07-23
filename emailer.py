@@ -4,6 +4,7 @@ Uses Resend (https://resend.com). If RESEND_API_KEY is not set, sends are
 skipped with a warning so the app never crashes in dev/preview environments.
 """
 import os
+import html
 import logging
 import httpx
 
@@ -88,13 +89,19 @@ def send_dispute_filed_email(admin_email: str, rep_name: str, dispute_type: str,
 def send_applicant_notification(admin_email: str, name: str, email: str,
                                   product_interest: str, message: str) -> bool:
     link = f"{APP_BASE_URL}/leadership/applicants"
+    # Applicant fields come from the public /join/apply form — escape before
+    # interpolating into HTML to prevent injection into the notification email.
+    name_e = html.escape(name or "")
+    email_e = html.escape(email or "")
+    interest_e = html.escape(product_interest or "")
+    message_e = html.escape(message or "")
     message_html = (
-        f'<p style="background:#f4f4f4; padding:16px; border-radius:6px;">{message}</p>'
+        f'<p style="background:#f4f4f4; padding:16px; border-radius:6px;">{message_e}</p>'
         if message else ""
     )
     body = f"""
-    <p>A new Evangelist application just came in from <strong>{name}</strong> ({email}).</p>
-    <p>Product interest: <strong>{product_interest}</strong></p>
+    <p>A new Evangelist application just came in from <strong>{name_e}</strong> ({email_e}).</p>
+    <p>Product interest: <strong>{interest_e}</strong></p>
     {message_html}
     <p style="text-align:center; margin:32px 0;">
       <a href="{link}" style="background:{GOLD}; color:{NAVY}; text-decoration:none; font-weight:bold;

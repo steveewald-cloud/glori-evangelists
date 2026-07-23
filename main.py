@@ -435,8 +435,11 @@ async def run_commission(
     active client for the given (or current) month. Idempotent — safe to
     re-run; see db.build_commission_ledger_for_month / ledger.py."""
     if month:
-        y, m = month.split("-")
-        ledger_month = date(int(y), int(m), 1)
+        try:
+            y, m = month.split("-")
+            ledger_month = date(int(y), int(m), 1)
+        except (ValueError, TypeError):
+            return RedirectResponse(url="/leadership?error=bad_month", status_code=303)
     else:
         today = date.today()
         ledger_month = date(today.year, today.month, 1)

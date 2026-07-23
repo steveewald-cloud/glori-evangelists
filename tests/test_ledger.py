@@ -120,24 +120,21 @@ def test_idempotency_contract_update_columns_exclude_paid_state():
     assert "client_id" not in ledger.LEDGER_UPDATE_COLUMNS
 
 
-def test_first_of_month_account_age_mid_month_start():
-    # Client starts mid-month (the 15th). ledger_month is always pinned to
-    # the 1st of the month, so account_month only rolls over once the
-    # ledger_month's 1st has passed the *day* threshold via the underlying
-    # account_age_months day comparison (as_of.day=1 < subscription day=15
-    # -> rolls back one month vs a naive same-month diff). This documents
-    # the exact pinned semantics used by the ledger builder.
+def test_mid_month_start_recognized_in_start_month():
+    # Billing is on the 1st (partial first month prorated), so a client that
+    # starts mid-month (the 15th) earns their month-1 commission in that SAME
+    # calendar month — not the following month. The ledger uses calendar-month
+    # indexing (start month == month 1), not anniversary-day semantics.
     client = _client(mrr=400, subscription_start=date(2026, 1, 15))
     row_jan = ledger.compute_ledger_row(client, "active", 0, date(2026, 1, 1))
     row_feb = ledger.compute_ledger_row(client, "active", 0, date(2026, 2, 1))
-    # Directly cross-checked against the engine primitive used by ledger.py.
-    assert row_jan["subscription_month"] == c.account_age_months(date(2026, 1, 15), date(2026, 1, 1))
-    assert row_feb["subscription_month"] == c.account_age_months(date(2026, 1, 15), date(2026, 2, 1))
-    # As of the ledger's first-of-month convention, Jan 1 is *before* the
-    # subscription start (day 1 < day 15), so account_age_months returns 0
-    # for that first partial month, then increments normally thereafter.
-    assert row_jan["subscription_month"] == 0
-    assert row_feb["subscription_month"] == 1
+    assert row_jan["subscription_month"] == 1          # start month IS month 1
+    assert row_jan["net_commission"] == 80             # 20% of $400, month 1
+    assert row_feb["subscription_month"] == 2
+    # A ledger month before the client existed yields no commission.
+    row_dec = ledger.compute_ledger_row(client, "active", 0, date(2025, 12, 1))
+    assert row_dec["subscription_month"] == 0
+    assert row_dec["net_commission"] == 0
 
 
 def test_as_date_coerces_datetime():
@@ -159,7 +156,7 @@ TESTS = [
     test_compute_ledger_row_is_deterministic,
     test_idempotency_contract_conflict_target,
     test_idempotency_contract_update_columns_exclude_paid_state,
-    test_first_of_month_account_age_mid_month_start,
+    test_mid_month_start_recognized_in_start_month,
     test_as_date_coerces_datetime,
 ]
 

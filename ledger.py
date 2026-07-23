@@ -8,7 +8,7 @@ wraps this in the actual fetch + upsert against Postgres.
 """
 from datetime import datetime, date
 
-from commission import account_age_months, account_month_commission, is_residual_qualified
+from commission import account_month_commission, is_residual_qualified
 
 
 def _as_date(value):
@@ -47,7 +47,16 @@ def compute_ledger_row(client: dict, rep_status: str, new_accounts_ytd: int, led
     new_accounts_ytd: count of that rep's new accounts in ledger_month's
     calendar year (input to is_residual_qualified).
     """
-    account_month = account_age_months(_as_date(client["subscription_start"]), ledger_month)
+    # Calendar-month recognition: the subscription's start month IS month 1,
+    # regardless of day-of-month. The ledger runs per calendar month (pinned to
+    # the 1st) and billing is "on the 1st, partial first month prorated", so a
+    # client that starts on any day of month M earns their month-1 commission
+    # in month M — not the following month. (account_age_months' anniversary-day
+    # semantics are for the live per-client display, not the money-recognition
+    # ledger.) A ledger_month before the start resolves to <= 0, which the
+    # engine treats as no commission.
+    start = _as_date(client["subscription_start"])
+    account_month = (ledger_month.year - start.year) * 12 + (ledger_month.month - start.month) + 1
     rep_employed = (rep_status == "active")
     residual_qualified = is_residual_qualified(new_accounts_ytd)
 
