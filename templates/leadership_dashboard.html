@@ -299,15 +299,16 @@
     var mrrGroup = document.getElementById('add-client-custom-mrr-group');
     var planSelect = document.getElementById('add-client-plan');
     var mrrInput = document.getElementById('add-client-custom-mrr');
+    // Hide (do NOT disable) the irrelevant control: disabled form controls are
+    // not submitted, which would drop `plan` and 422 the quetrex add. Hidden but
+    // enabled still submits; the server picks the value by the rep's track.
     if (track === 'quetrex') {
       planGroup.style.display = 'none';
       mrrGroup.style.display = '';
-      planSelect.disabled = true;
       mrrInput.required = true;
     } else {
       planGroup.style.display = '';
       mrrGroup.style.display = 'none';
-      planSelect.disabled = false;
       mrrInput.required = false;
     }
   }

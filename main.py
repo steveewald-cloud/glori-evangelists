@@ -569,6 +569,8 @@ async def add_rep(
     password: str = Form(...),
     track: str = Form("marketing51"),
 ):
+    # Whitelist the track — never insert an arbitrary form value.
+    track = track if track in ("marketing51", "quetrex") else "marketing51"
     async with db.get_conn() as conn:
         result = await conn.execute(
             """INSERT INTO reps (name, email, phone, territory_state, territory_region, territory_vertical, start_date, track)
@@ -594,7 +596,7 @@ async def add_client(
     rep_id: int = Form(...),
     business_name: str = Form(...),
     contact_email: str = Form(""),
-    plan: str = Form(...),
+    plan: str = Form("growth"),
     subscription_start: str = Form(...),
     is_ambassador_deal: bool = Form(False),
     ambassador_name: str = Form(""),
