@@ -51,6 +51,15 @@ RESIDUAL_END_MONTH = 60                # 5-year per-account cap
 RESIDUAL_GATE_ACCOUNTS = 50            # >= 50 new accounts/yr to earn residual
 YEAR_TARGET_ACCOUNTS = 100             # stretch target / Year bonus threshold
 
+# --- Enterprise (Quetrex) track: ARR-gated residual qualification ---------
+# Same per-account math as marketing51 (20% mo 1-12, 5% mo 13-60, employed-
+# only, 5-yr cap) — the ONLY difference is the annual residual gate: instead
+# of a new-account COUNT, quetrex reps qualify on new-account ARR booked
+# that year (a new account's ARR = its MRR * 12). No milestone bonuses on
+# this track.
+ENTERPRISE_RESIDUAL_GATE_ARR = 250000  # >= $250K ARR booked/yr to earn residual
+ENTERPRISE_ANNUAL_TARGET_ARR = 500000  # stretch target (no bonus attached)
+
 # --- Stacking, one-time milestone bonuses ---------------------------------
 FAST_START_BONUS = 1000                # >= 10 new sites in month 1
 QUARTER_BONUS = 2500                   # >= 25 new sites in 3 months
@@ -188,6 +197,27 @@ def is_residual_qualified(new_accounts_ytd: int) -> bool:
     """Residual qualification gate: new_accounts_ytd >= 50. Annual,
     re-qualify each year."""
     return new_accounts_ytd >= RESIDUAL_GATE_ACCOUNTS
+
+
+def is_residual_qualified_enterprise(arr_booked_ytd) -> bool:
+    """Enterprise (quetrex) residual qualification gate: a rep qualifies
+    for the 5% residual in a given year only if they booked >= $250,000 in
+    new-account ARR (MRR * 12) that year. Annual, re-qualify each year --
+    mirrors is_residual_qualified's semantics, just on ARR instead of a
+    account count."""
+    arr_d = arr_booked_ytd if isinstance(arr_booked_ytd, Decimal) else Decimal(str(arr_booked_ytd))
+    return arr_d >= ENTERPRISE_RESIDUAL_GATE_ARR
+
+
+def is_residual_qualified_for_track(track: str, metric) -> bool:
+    """Single resolver so ledger/db/main never branch on track
+    independently: quetrex reps are gated on ARR booked YTD
+    (is_residual_qualified_enterprise); every other track (marketing51,
+    or anything unrecognized) is gated on new-account COUNT YTD
+    (is_residual_qualified) -- unchanged behavior."""
+    if track == "quetrex":
+        return is_residual_qualified_enterprise(metric)
+    return is_residual_qualified(metric)
 
 
 def milestone_bonuses(sites_month1: int, sites_quarter: int, sites_year: int) -> dict:

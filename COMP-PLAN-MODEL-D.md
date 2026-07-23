@@ -138,3 +138,35 @@ wrong until migrated.
 - **Model: FULLY LOCKED** (§1–§2, including the residual-gate mechanic).
 - **Surfaces: all still on old models** — nothing propagated yet.
 - **Open PRs:** `glori-evangelists#1` open/unmerged; branch `chore/archive-legacy-commission`.
+
+## 7. Enterprise (Quetrex) track (Steve, 2026-07-23)
+
+A second comp track for reps selling the **Quetrex / Build.Glori** enterprise
+product line, alongside the existing **marketing51** (SMB) track above. A rep
+belongs to exactly one track (`reps.track`).
+
+**Per-account math is IDENTICAL to marketing51 — nothing below changes it:**
+- 20% of MRR, months 1–12 (commission phase).
+- 5% of MRR, months 13–60 (residual phase), employed-only, no clawbacks.
+- Hard 5-year per-account cap (month > 60 → $0).
+- Enterprise deals carry **custom MRR** (not the Starter/Growth/Pro tiers) —
+  the add-client flow accepts a custom monthly MRR when the client's rep is
+  on the quetrex track. `clients.mrr` is unchanged (already stored per row);
+  these clients are labeled `plan = 'enterprise'` for display only.
+
+**The ONLY difference is the residual qualification gate:**
+- marketing51 gate: ≥ 50 new accounts booked that calendar year (§2).
+- **quetrex gate: ≥ $250,000 in new-account ARR booked that calendar year**,
+  where a new account's ARR = its MRR × 12. **$500,000/yr** is the stretch
+  target (mirrors the marketing51 100-account target) — there is no bonus
+  attached to it.
+- Same annual re-qualify / no-clawback mechanic as §2: a year that misses the
+  gate earns no new residual that year; residual already paid in a prior
+  qualifying year is never clawed back.
+- **No milestone bonuses on the quetrex track.** The $1,000 / $2,500 /
+  $10,000 stacking bonuses (§1) stay marketing51-only.
+
+**Classification:** Quetrex reps, like marketing51 reps, are **W-2 employees**
+(Steve, 2026-07-23) — see `docs/evangelist-program/worker-classification-brief.md`.
+
+All marketing51 sections (§1–§6) above are unchanged by this addition.

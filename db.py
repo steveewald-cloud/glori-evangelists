@@ -148,20 +148,25 @@ async def build_commission_ledger_for_month(conn, ledger_month):
     Does NOT commit — caller commits (matches add_client/add_rep)."""
     clients_result = await conn.execute(
         """SELECT c.id, c.rep_id, c.mrr, c.subscription_start,
-           c.is_ambassador_deal, r.status AS rep_status
+           c.is_ambassador_deal, r.status AS rep_status, r.track AS rep_track
            FROM clients c JOIN reps r ON r.id = c.rep_id
            WHERE c.status = 'active'"""
     )
     clients = await clients_result.fetchall()
 
+    # Both YTD gate metrics computed in one pass: COUNT (marketing51 gate)
+    # and ARR = SUM(mrr) * 12 (quetrex gate), grouped by rep, for accounts
+    # started in ledger_month's calendar year.
     ytd_result = await conn.execute(
-        """SELECT rep_id, COUNT(*) AS cnt FROM clients
+        """SELECT rep_id, COUNT(*) AS cnt, COALESCE(SUM(c.mrr), 0) * 12 AS arr
+           FROM clients c
            WHERE status = 'active' AND EXTRACT(YEAR FROM subscription_start) = %s
            GROUP BY rep_id""",
         (ledger_month.year,),
     )
     ytd_rows = await ytd_result.fetchall()
     ytd_counts = {row["rep_id"]: row["cnt"] for row in ytd_rows}
+    ytd_arr = {row["rep_id"]: row["arr"] for row in ytd_rows}
 
     paid_result = await conn.execute(
         """SELECT client_id FROM commission_ledger
@@ -176,8 +181,11 @@ async def build_commission_ledger_for_month(conn, ledger_month):
     paid_skipped = 0
 
     for client in clients:
+        track = client["rep_track"] or "marketing51"
+        rep_id = client["rep_id"]
+        metric = ytd_arr.get(rep_id, 0) if track == "quetrex" else ytd_counts.get(rep_id, 0)
         row = ledger.compute_ledger_row(
-            client, client["rep_status"], ytd_counts.get(client["rep_id"], 0), ledger_month
+            client, client["rep_status"], metric, ledger_month, track=track
         )
         if client["id"] in paid_client_ids:
             paid_skipped += 1
@@ -258,7 +266,7 @@ async def get_rep_attainment_summary(conn):
     # total_mrr_managed and mrr_target are required by
     # reps_management.html and leadership_dashboard.html templates.
     result = await conn.execute(
-        """SELECT r.id, r.name, r.email, r.status, r.is_ramp,
+        """SELECT r.id, r.name, r.email, r.status, r.is_ramp, r.track,
            r.territory_state, r.territory_region, r.territory_vertical,
            COALESCE((SELECT SUM(cl.net_commission) FROM commission_ledger cl
              WHERE cl.rep_id = r.id

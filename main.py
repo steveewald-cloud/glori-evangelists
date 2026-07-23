@@ -21,13 +21,15 @@ import db
 import emailer
 from commission import (
     account_month_commission,
-    is_residual_qualified,
+    is_residual_qualified_for_track,
     milestone_bonuses,
     calculate_kingdom_giving,
     calculate_founders_pool,
     PLAN_MRR,
     RESIDUAL_GATE_ACCOUNTS,
     YEAR_TARGET_ACCOUNTS,
+    ENTERPRISE_RESIDUAL_GATE_ARR,
+    ENTERPRISE_ANNUAL_TARGET_ARR,
     draw_for,
 )
 
@@ -208,6 +210,63 @@ def _new_accounts_ytd(clients, as_of=None):
     return count
 
 
+def _arr_booked_ytd(clients, as_of=None):
+    """Sum of (mrr * 12) for a rep's clients whose subscription_start falls
+    in the current calendar year — the input to
+    is_residual_qualified_enterprise() / the quetrex track's gate metric."""
+    as_of = as_of or date.today()
+    total = Decimal("0")
+    for c in clients:
+        sub_start = _as_date(c.get("subscription_start"))
+        if sub_start and sub_start.year == as_of.year:
+            mrr = c.get("mrr") or 0
+            mrr_d = mrr if isinstance(mrr, Decimal) else Decimal(str(mrr))
+            total += mrr_d * 12
+    return total
+
+
+def _gate_context(track, new_accounts_ytd, arr_booked_ytd):
+    """Track-aware gate/target context so templates stay dumb — one shape
+    for both tracks: {track, unit, current, qualify_threshold, target, pct,
+    qualified, current_display, qualify_display, target_display}."""
+    if track == "quetrex":
+        current = float(arr_booked_ytd)
+        qualify_threshold = ENTERPRISE_RESIDUAL_GATE_ARR
+        target = ENTERPRISE_ANNUAL_TARGET_ARR
+        qualified = is_residual_qualified_for_track(track, arr_booked_ytd)
+        pct = min(current / qualify_threshold * 100, 100) if qualify_threshold else 0
+        return {
+            "track": track,
+            "unit": "ARR",
+            "current": current,
+            "qualify_threshold": qualify_threshold,
+            "target": target,
+            "pct": pct,
+            "qualified": qualified,
+            "current_display": f"${current:,.0f}",
+            "qualify_display": "$250K",
+            "target_display": "$500K",
+        }
+
+    current = new_accounts_ytd
+    qualify_threshold = RESIDUAL_GATE_ACCOUNTS
+    target = YEAR_TARGET_ACCOUNTS
+    qualified = is_residual_qualified_for_track("marketing51", new_accounts_ytd)
+    pct = min(current / qualify_threshold * 100, 100) if qualify_threshold else 0
+    return {
+        "track": "marketing51",
+        "unit": "accounts",
+        "current": current,
+        "qualify_threshold": qualify_threshold,
+        "target": target,
+        "pct": pct,
+        "qualified": qualified,
+        "current_display": str(current),
+        "qualify_display": str(qualify_threshold),
+        "target_display": str(target),
+    }
+
+
 def _milestone_windows(rep, clients):
     """sites_month1/quarter/year counts for milestone_bonuses(), relative
     to the rep's start_date."""
@@ -252,8 +311,12 @@ async def rep_dashboard(request: Request, user=Depends(require_user)):
             commission_history = []
 
         rep_employed = bool(rep) and rep.get("status") == "active"
+        rep_track = (rep.get("track") if rep else None) or "marketing51"
         new_accounts_ytd = _new_accounts_ytd(clients)
-        residual_qualified = is_residual_qualified(new_accounts_ytd)
+        arr_booked_ytd = _arr_booked_ytd(clients)
+        gate_metric = arr_booked_ytd if rep_track == "quetrex" else new_accounts_ytd
+        residual_qualified = is_residual_qualified_for_track(rep_track, gate_metric)
+        gate = _gate_context(rep_track, new_accounts_ytd, arr_booked_ytd)
 
         earned = float(commission_this_month["total"]) if commission_this_month else 0
         draw = float(draw_for(earned))
@@ -289,9 +352,11 @@ async def rep_dashboard(request: Request, user=Depends(require_user)):
         "commission_history": commission_history,
         "plan_mrr": PLAN_MRR,
         "new_accounts_ytd": new_accounts_ytd,
+        "arr_booked_ytd": float(arr_booked_ytd),
         "residual_qualified": residual_qualified,
         "residual_gate": RESIDUAL_GATE_ACCOUNTS,
         "year_target": YEAR_TARGET_ACCOUNTS,
+        "gate": gate,
         "bonus_progress": bonus_progress,
         "sites_month1": sites_month1,
         "sites_quarter": sites_quarter,
@@ -388,22 +453,33 @@ async def leadership_dashboard(request: Request, user=Depends(require_leadership
         current_reserve=Decimal("0"),
     )
 
-    # Model D: YTD new-account count per rep (vs the 50 residual gate / 100
-    # target), derived from already-fetched client rows rather than a
-    # dedicated query.
+    # Model D two-track: YTD new-account count AND new-account ARR per rep,
+    # derived from already-fetched client rows rather than a dedicated
+    # query. Each row's gate/target is then resolved by that rep's track
+    # (marketing51 -> account count vs 50/100; quetrex -> ARR vs $250K/$500K).
     this_year = date.today().year
     new_accounts_by_rep = defaultdict(int)
+    arr_by_rep = defaultdict(lambda: Decimal("0"))
     for c in all_clients:
         sub_start = _as_date(c.get("subscription_start"))
         if sub_start and sub_start.year == this_year:
-            new_accounts_by_rep[c.get("rep_id")] += 1
+            rep_id = c.get("rep_id")
+            new_accounts_by_rep[rep_id] += 1
+            mrr = c.get("mrr") or 0
+            mrr_d = mrr if isinstance(mrr, Decimal) else Decimal(str(mrr))
+            arr_by_rep[rep_id] += mrr_d * 12
 
     for row in rep_attainment:
         ytd = row.get("new_accounts_ytd")
         if ytd is None:
             ytd = new_accounts_by_rep.get(row["id"], 0)
+        arr_ytd = arr_by_rep.get(row["id"], Decimal("0"))
         row["new_accounts_ytd"] = ytd
-        row["residual_qualified"] = is_residual_qualified(ytd)
+        row["arr_booked_ytd"] = float(arr_ytd)
+        row_track = row.get("track") or "marketing51"
+        gate_metric = arr_ytd if row_track == "quetrex" else ytd
+        row["residual_qualified"] = is_residual_qualified_for_track(row_track, gate_metric)
+        row["gate"] = _gate_context(row_track, ytd, arr_ytd)
 
     return templates.TemplateResponse(request, "leadership_dashboard.html", {
         "request": request,
@@ -491,13 +567,16 @@ async def add_rep(
     territory_vertical: str = Form("general"),
     start_date: str = Form(""),
     password: str = Form(...),
+    track: str = Form("marketing51"),
 ):
+    # Whitelist the track — never insert an arbitrary form value.
+    track = track if track in ("marketing51", "quetrex") else "marketing51"
     async with db.get_conn() as conn:
         result = await conn.execute(
-            """INSERT INTO reps (name, email, phone, territory_state, territory_region, territory_vertical, start_date)
-               VALUES (%s,%s,%s,%s,%s,%s,%s) RETURNING id""",
+            """INSERT INTO reps (name, email, phone, territory_state, territory_region, territory_vertical, start_date, track)
+               VALUES (%s,%s,%s,%s,%s,%s,%s,%s) RETURNING id""",
             (name, email, phone, territory_state, territory_region, territory_vertical,
-             start_date or date.today().isoformat())
+             start_date or date.today().isoformat(), track)
         )
         rep_row = await result.fetchone()
         rep_id = rep_row["id"]
@@ -517,13 +596,30 @@ async def add_client(
     rep_id: int = Form(...),
     business_name: str = Form(...),
     contact_email: str = Form(""),
-    plan: str = Form(...),
+    plan: str = Form("growth"),
     subscription_start: str = Form(...),
     is_ambassador_deal: bool = Form(False),
     ambassador_name: str = Form(""),
+    custom_mrr: str = Form(""),
 ):
-    mrr = PLAN_MRR.get(plan, 400)
     async with db.get_conn() as conn:
+        rep = await db.get_rep_by_id(conn, rep_id)
+        rep_track = (rep.get("track") if rep else None) or "marketing51"
+
+        if rep_track == "quetrex":
+            # Enterprise deals carry a custom monthly MRR, not the SMB tiers.
+            try:
+                custom_mrr_d = Decimal(str(custom_mrr).strip())
+            except Exception:
+                return RedirectResponse(url="/leadership?error=bad_mrr", status_code=303)
+            if custom_mrr_d <= 0:
+                return RedirectResponse(url="/leadership?error=bad_mrr", status_code=303)
+            mrr = custom_mrr_d
+            plan = "enterprise"
+        else:
+            # marketing51 (or track absent): byte-identical to the pre-existing path.
+            mrr = PLAN_MRR.get(plan, 400)
+
         result = await conn.execute(
             """INSERT INTO clients (rep_id, business_name, contact_email, plan, mrr, 
                subscription_start, is_ambassador_deal, ambassador_name)
@@ -578,18 +674,27 @@ async def api_rep_earnings(rep_id: int, user=Depends(require_user)):
         clients = await db.get_rep_clients(conn, rep_id)
 
     earned = float(commission["total"]) if commission else 0
+    rep_track = rep.get("track") or "marketing51"
     new_accounts_ytd = _new_accounts_ytd(clients)
-    residual_qualified = is_residual_qualified(new_accounts_ytd)
+    arr_booked_ytd = _arr_booked_ytd(clients)
+    gate_metric = arr_booked_ytd if rep_track == "quetrex" else new_accounts_ytd
+    residual_qualified = is_residual_qualified_for_track(rep_track, gate_metric)
+    gate = _gate_context(rep_track, new_accounts_ytd, arr_booked_ytd)
 
     return JSONResponse(jsonable_encoder({
         "rep_id": rep_id,
         "rep_name": rep["name"],
+        "track": rep_track,
         "earned_this_month": earned,
         "commission_earned": earned,
         "new_accounts_ytd": new_accounts_ytd,
+        "arr_booked_ytd": float(arr_booked_ytd),
         "residual_qualified": residual_qualified,
         "residual_gate": RESIDUAL_GATE_ACCOUNTS,
         "year_target": YEAR_TARGET_ACCOUNTS,
+        "enterprise_residual_gate_arr": ENTERPRISE_RESIDUAL_GATE_ARR,
+        "enterprise_annual_target_arr": ENTERPRISE_ANNUAL_TARGET_ARR,
+        "gate": gate,
         "draw": float(draw_for(earned)),
         "history": [dict(h) for h in history],
     }))

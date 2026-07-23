@@ -33,7 +33,7 @@ environment; no code change. See `commission.py` → `draw_for()`.
 
 | | **Evangelists** (this project) | **Ambassadors** |
 |---|---|---|
-| Who | Paid GLORi field reps (1099 or salaried) | An existing GLORi **customer** |
+| Who | Paid GLORi field reps (W-2 employees) | An existing GLORi **customer** |
 | Does | Prospects, shares the vision, closes new business | Refers peers *after* becoming a happy customer |
 | Paid | Cash commission + residual | Account credit **or** a Bless — **never cash to a person** |
 | Relationship | Disclosed agent of GLORi | Advocate / customer |
